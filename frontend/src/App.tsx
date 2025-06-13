@@ -4,7 +4,7 @@ import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
+import Account from './pages/Account';
 import './App.css';
 
 function App() {
@@ -38,8 +38,8 @@ function App() {
       <div className="container" style={{ padding: '50px 0 100px 0' }}>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
+          <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
+          <Route path="/account" element={session ? <Account session={session} /> : <Navigate to="/login" />} />
         </Routes>
       </div>
     </Router>
