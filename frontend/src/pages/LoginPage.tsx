@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 import React, { useState } from 'react';
 
-const Auth: React.FC = () => {
+const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
 
@@ -42,4 +42,4 @@ const Auth: React.FC = () => {
   );
 };
 
-export default Auth; 
+export default LoginPage; 
