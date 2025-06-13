@@ -1,8 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 import logo from './logo.svg';
 import './App.css';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setSession(session);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -18,6 +38,7 @@ function App() {
         >
           Learn React
         </a>
+        <p>{session ? `Logged in as ${session.user.email}` : 'Logged out'}</p>
       </header>
     </div>
   );
