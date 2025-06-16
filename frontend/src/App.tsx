@@ -35,7 +35,7 @@ function App() {
 
   return (
     <Router>
-      <div className="container" style={{ padding: '50px 0 100px 0' }}>
+      <div className="min-h-screen bg-red-500 text-white font-sans">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
