@@ -6,6 +6,7 @@ import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
 import Account from './pages/Account';
 import ResourceBrowse from './pages/ResourceBrowse';
+import ResourceDetail from './pages/ResourceDetail';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -44,6 +45,7 @@ function App() {
           <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
           <Route path="/account" element={session ? <Account session={session} /> : <Navigate to="/login" />} />
           <Route path="/resources" element={<ResourceBrowse />} />
+          <Route path="/resource/:id" element={<ResourceDetail />} />
         </Routes>
       </div>
     </Router>
