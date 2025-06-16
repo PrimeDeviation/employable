@@ -35,7 +35,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-red-500 text-white font-sans">
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans transition-colors">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
