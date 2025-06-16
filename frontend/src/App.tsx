@@ -5,6 +5,8 @@ import { supabase } from './supabaseClient';
 import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
 import Account from './pages/Account';
+import ResourceBrowse from './pages/ResourceBrowse';
+import Navbar from './components/Navbar';
 import './App.css';
 
 function App() {
@@ -35,11 +37,13 @@ function App() {
 
   return (
     <Router>
+      {session && <Navbar />}
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans transition-colors">
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={session ? <Navigate to="/account" /> : <Landing />} />
           <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
           <Route path="/account" element={session ? <Account session={session} /> : <Navigate to="/login" />} />
+          <Route path="/resources" element={<ResourceBrowse />} />
         </Routes>
       </div>
     </Router>
