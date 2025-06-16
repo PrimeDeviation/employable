@@ -58,7 +58,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow dark:shadow-none mb-8 z-50 relative" style={{ zIndex: 100 }}>
+    <nav className="bg-white dark:bg-gray-800 shadow dark:shadow-none z-50 relative" style={{ zIndex: 100 }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-center relative">
           <span className="font-bold text-lg text-indigo-700 dark:text-indigo-300 mr-8">Employable</span>
