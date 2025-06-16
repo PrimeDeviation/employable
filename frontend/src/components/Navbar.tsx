@@ -44,6 +44,7 @@ const navSections = [
 
 const Navbar: React.FC = () => {
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const navRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isDark, setIsDark] = useState(false);
 
@@ -61,15 +62,15 @@ const Navbar: React.FC = () => {
     <nav className="bg-white dark:bg-gray-800 shadow dark:shadow-none z-50 relative" style={{ zIndex: 100 }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-center relative">
-          <span className="font-bold text-lg text-indigo-700 dark:text-indigo-300 mr-8">Employable</span>
+          <Link to="/" className="font-bold text-lg text-indigo-700 dark:text-indigo-300 mr-8 hover:underline focus:outline-none">Employable</Link>
           <div className="flex items-center space-x-8 overflow-x-auto">
             {navSections.map((section, idx) => (
               <div
                 key={section.label}
                 className="relative"
                 ref={el => { navRefs.current[idx] = el; }}
-                onMouseEnter={() => setOpenSection(section.label)}
-                onMouseLeave={() => setOpenSection(null)}
+                onMouseEnter={() => { setOpenSection(section.label); setHoveredSection(section.label); }}
+                onMouseLeave={() => setHoveredSection(null)}
               >
                 <button
                   className="flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
@@ -79,20 +80,22 @@ const Navbar: React.FC = () => {
                   {section.label}
                   <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
-                {openSection === section.label && navRefs.current[idx] && (
+                {openSection === section.label && hoveredSection === section.label && navRefs.current[idx] && (
                   <div
                     className="fixed w-56 bg-white dark:bg-gray-800 rounded shadow-lg dark:shadow-none py-2 z-50 border border-gray-200 dark:border-gray-700"
                     style={{
                       top: (navRefs.current[idx]?.getBoundingClientRect().bottom || 0) + 4,
                       left: (navRefs.current[idx]?.getBoundingClientRect().left || 0) + (navRefs.current[idx]?.offsetWidth || 0) / 2 - 112,
                     }}
+                    onMouseEnter={() => setHoveredSection(section.label)}
+                    onMouseLeave={() => setHoveredSection(null)}
                   >
                     {section.links.map((link) => (
                       <Link
                         key={link.to}
                         to={link.to}
                         className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-indigo-700 rounded transition whitespace-nowrap"
-                        onClick={() => setOpenSection(null)}
+                        onClick={() => { setOpenSection(null); setHoveredSection(null); }}
                       >
                         {link.label}
                       </Link>
