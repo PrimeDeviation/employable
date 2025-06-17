@@ -94,13 +94,19 @@ const ResourceDetail: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{resource.name}</h1>
                 <p className="text-lg text-gray-600 dark:text-gray-300">{resource.role}</p>
               </div>
-              {isOwner && (
+              {isOwner ? (
                 <Link to="/profile/edit">
                   <Button variant="outline" size="sm">
                     Edit Profile
                   </Button>
                 </Link>
-              )}
+              ) : user ? (
+                <Link to={`/contact/${resource.id}`}>
+                  <Button size="sm">
+                    Contact Pilot
+                  </Button>
+                </Link>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2 mb-6">
               {resource.skills.map((skill) => (
