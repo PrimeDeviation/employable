@@ -14,6 +14,7 @@ import Messages from './pages/Messages';
 import Contracts from './pages/Contracts';
 import ContractCreate from './pages/ContractCreate';
 import ContractDetail from './pages/ContractDetail';
+import AdminPanel from './pages/AdminPanel';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -46,6 +47,7 @@ const MainApp: React.FC = () => {
           <Route path="/contracts" element={session ? <Contracts /> : <Navigate to="/login" />} />
           <Route path="/contracts/create" element={session ? <ContractCreate /> : <Navigate to="/login" />} />
           <Route path="/contracts/:contractId" element={session ? <ContractDetail /> : <Navigate to="/login" />} />
+          <Route path="/admin" element={session ? <AdminPanel /> : <Navigate to="/login" />} />
           <Route path="/resources" element={<ResourceBrowse />} />
           <Route path="/resource/:id" element={<ResourceDetail />} />
         </Routes>

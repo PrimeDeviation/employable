@@ -40,6 +40,12 @@ const navSections = [
       { to: '/profile', label: 'Profile Population' },
     ],
   },
+  {
+    label: 'System',
+    links: [
+      { to: '/admin', label: 'Admin Panel' },
+    ],
+  },
 ];
 
 const Navbar: React.FC = () => {
