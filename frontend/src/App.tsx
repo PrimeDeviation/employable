@@ -8,6 +8,7 @@ import ResourceBrowse from './pages/ResourceBrowse';
 import ResourceDetail from './pages/ResourceDetail';
 import ProfileEdit from './pages/ProfileEdit';
 import TeamPage from './pages/TeamPage';
+import AvailabilityManager from './pages/AvailabilityManager';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -34,6 +35,7 @@ const MainApp: React.FC = () => {
           <Route path="/account" element={session ? <Account /> : <Navigate to="/login" />} />
           <Route path="/profile/edit" element={session ? <ProfileEdit /> : <Navigate to="/login" />} />
           <Route path="/teams" element={session ? <TeamPage /> : <Navigate to="/login" />} />
+          <Route path="/availability" element={session ? <AvailabilityManager /> : <Navigate to="/login" />} />
           <Route path="/resources" element={<ResourceBrowse />} />
           <Route path="/resource/:id" element={<ResourceDetail />} />
         </Routes>
