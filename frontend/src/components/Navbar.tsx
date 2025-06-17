@@ -21,7 +21,7 @@ const navSections = [
   {
     label: 'Team & Management',
     links: [
-      { to: '/team', label: 'Team Management' },
+      { to: '/teams', label: 'My Teams' },
       { to: '/resource-management', label: 'Resource Management' },
       { to: '/availability', label: 'Availability/Rate' },
     ],
