@@ -90,6 +90,47 @@ const AdminPanel: React.FC = () => {
     setLoading(false);
   };
 
+  const createTestTeam = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase.rpc('create_team', {
+      name: 'Test AI Agent Team'
+    });
+
+    if (error) {
+      console.error('Error creating team:', error);
+      alert('Error creating team: ' + error.message);
+    } else {
+      alert('Test team created successfully!');
+      fetchTeams();
+    }
+  };
+
+  const debugTeams = async () => {
+    console.log('=== TEAM DEBUG INFO ===');
+    console.log('Current user ID:', user?.id);
+    console.log('Teams state:', teams);
+    
+    // Fetch teams without any filters to see what's actually there
+    const { data: allTeams, error } = await supabase
+      .from('teams')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    console.log('Raw teams from database:', allTeams);
+    console.log('Error:', error);
+    
+    // Check team_members table
+    const { data: memberships, error: memberError } = await supabase
+      .from('team_members')
+      .select('*');
+    
+    console.log('Team memberships:', memberships);
+    console.log('Membership error:', memberError);
+    
+    alert('Debug info logged to console. Check browser dev tools.');
+  };
+
   const promoteToAdmin = async (userId: string) => {
     setPromoting(true);
     
@@ -174,12 +215,20 @@ const AdminPanel: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-400">
           Manage users, teams, and system permissions
         </p>
-        <div className="mt-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Your role: </span>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(userRole)}`}>
-            {userRole}
-          </span>
-        </div>
+                 <div className="mt-4">
+           <span className="text-sm text-gray-500 dark:text-gray-400">Your role: </span>
+           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(userRole)}`}>
+             {userRole}
+           </span>
+           <div className="mt-2 text-xs text-gray-400">
+             Database: Cloud (kvtqkvifglyytdsvsyzo.supabase.co) • Users: {users.length} • Teams: {teams.length}
+             <br />
+             Your User ID: {user?.id?.substring(0, 8)}...
+           </div>
+           <div className="mt-1 text-xs text-gray-400">
+             Your User ID: {user?.id ? `${user.id.substring(0, 8)}...` : 'Not logged in'}
+           </div>
+         </div>
       </div>
 
       {/* Admin Actions */}
@@ -246,14 +295,30 @@ const AdminPanel: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Teams Management
               </h2>
-              <Button
-                size="sm"
-                onClick={claimOrphanedTeams}
-                disabled={claimingTeams}
-                variant="outline"
-              >
-                {claimingTeams ? 'Claiming...' : 'Claim Orphaned Teams'}
-              </Button>
+                             <div className="flex gap-2">
+                 <Button
+                   size="sm"
+                   onClick={claimOrphanedTeams}
+                   disabled={claimingTeams}
+                   variant="outline"
+                 >
+                   {claimingTeams ? 'Claiming...' : 'Claim Orphaned Teams'}
+                 </Button>
+                 <Button
+                   size="sm"
+                   onClick={createTestTeam}
+                   variant="outline"
+                 >
+                   Create Test Team
+                 </Button>
+                 <Button
+                   size="sm"
+                   onClick={debugTeams}
+                   variant="outline"
+                 >
+                   Debug Teams
+                 </Button>
+               </div>
             </div>
             
             <div className="space-y-3">

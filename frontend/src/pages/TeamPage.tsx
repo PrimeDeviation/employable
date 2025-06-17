@@ -19,9 +19,14 @@ const TeamPage: React.FC = () => {
     const fetchTeams = async () => {
       if (!authLoading && user) {
         setLoading(true);
+        // Fetch teams where the user is a member (RLS policy will handle access)
         const { data, error } = await supabase
           .from('teams')
-          .select('*');
+          .select(`
+            *,
+            team_members!inner (user_id)
+          `)
+          .eq('team_members.user_id', user.id);
         
         if (error) {
           console.error('Error fetching teams:', error);
@@ -49,10 +54,14 @@ const TeamPage: React.FC = () => {
     } else {
       alert('Team created successfully!');
       setNewTeamName('');
-      // Refresh the list of teams by re-fetching
+      // Refresh the list of teams by re-fetching with proper membership filtering
       const { data: newTeamList } = await supabase
         .from('teams')
-        .select('*');
+        .select(`
+          *,
+          team_members!inner (user_id)
+        `)
+        .eq('team_members.user_id', user.id);
       setTeams(newTeamList || []);
     }
   };

@@ -28,11 +28,25 @@ interface Profile {
   website?: string;
 }
 
+interface TeamMembership {
+  team_id: number;
+  team_name: string;
+  owner_name?: string;
+}
+
+interface TeamOwnership {
+  team_id: number;
+  team_name: string;
+  member_count: number;
+}
+
 const ResourceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [resource, setResource] = useState<Resource | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [ownedTeams, setOwnedTeams] = useState<TeamOwnership[]>([]);
+  const [memberTeams, setMemberTeams] = useState<TeamMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +86,68 @@ const ResourceDetail: React.FC = () => {
       setResource(resourceData);
       if (resourceData.profile) {
         setProfile(resourceData.profile);
+      }
+
+      // Fetch team information for this user
+      if (resourceData.profile_id) {
+        console.log('Fetching teams for user ID:', resourceData.profile_id);
+        
+        // Get teams where user is owner/manager
+        const { data: ownedTeamsData, error: ownedTeamsError } = await supabase
+          .from('teams')
+          .select('id, name, owner_id')
+          .eq('owner_id', resourceData.profile_id);
+        
+        console.log('Owned teams data:', ownedTeamsData, 'Error:', ownedTeamsError);
+        if (!ownedTeamsError && ownedTeamsData) {
+          // Get member counts for each team
+          const teamsWithCounts = await Promise.all(
+            ownedTeamsData.map(async (team: any) => {
+              const { count } = await supabase
+                .from('team_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('team_id', team.id);
+              
+              return {
+                team_id: team.id,
+                team_name: team.name,
+                member_count: count || 0
+              };
+            })
+          );
+          setOwnedTeams(teamsWithCounts);
+        }
+
+        // Get teams where user is member but not owner
+        const { data: memberTeamsData, error: memberTeamsError } = await supabase
+          .from('team_members')
+          .select(`
+            team_id,
+            teams!inner(id, name, owner_id)
+          `)
+          .eq('user_id', resourceData.profile_id)
+          .neq('teams.owner_id', resourceData.profile_id);
+        
+        console.log('Member teams data:', memberTeamsData, 'Error:', memberTeamsError);
+        if (!memberTeamsError && memberTeamsData) {
+          // Get owner names for each team
+          const teamsWithOwners = await Promise.all(
+            memberTeamsData.map(async (membership: any) => {
+              const { data: ownerData } = await supabase
+                .from('profiles')
+                .select('full_name, username')
+                .eq('id', membership.teams.owner_id)
+                .single();
+              
+              return {
+                team_id: membership.teams.id,
+                team_name: membership.teams.name,
+                owner_name: ownerData?.full_name || ownerData?.username || 'Unknown'
+              };
+            })
+          );
+          setMemberTeams(teamsWithOwners);
+        }
       }
 
       setLoading(false);
@@ -171,6 +247,53 @@ const ResourceDetail: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">About</h3>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{profile.bio}</p>
+              </div>
+            )}
+
+            {/* Team Information */}
+            {(ownedTeams.length > 0 || memberTeams.length > 0) && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Team Affiliations</h3>
+                
+                {/* Teams as Manager */}
+                {ownedTeams.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">Manager of:</h4>
+                    <div className="space-y-2">
+                      {ownedTeams.map((team) => (
+                        <div key={team.team_id} className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-indigo-500 rounded-full mr-3"></div>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {team.member_count} member{team.member_count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Teams as Member */}
+                {memberTeams.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">Member of:</h4>
+                    <div className="space-y-2">
+                      {memberTeams.map((team) => (
+                        <div key={team.team_id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-gray-400 rounded-full mr-3"></div>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Led by {team.owner_name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

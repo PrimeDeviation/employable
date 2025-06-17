@@ -13,6 +13,8 @@ const ProfileEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [resumeText, setResumeText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [ownedTeams, setOwnedTeams] = useState<any[]>([]);
+  const [memberTeams, setMemberTeams] = useState<any[]>([]);
 
   useEffect(() => {
     const getProfileAndResource = async () => {
@@ -38,6 +40,68 @@ const ProfileEdit: React.FC = () => {
 
       if (resourceError) console.error('Error fetching resource', resourceError);
       else if (resourceData) setResource(resourceData);
+
+      // Fetch team information
+      if (user) {
+        console.log('ProfileEdit: Fetching teams for user ID:', user.id);
+        
+        // Get teams where user is owner/manager
+        const { data: ownedTeamsData, error: ownedTeamsError } = await supabase
+          .from('teams')
+          .select('id, name, owner_id')
+          .eq('owner_id', user.id);
+        
+        console.log('ProfileEdit: Owned teams data:', ownedTeamsData, 'Error:', ownedTeamsError);
+        if (!ownedTeamsError && ownedTeamsData) {
+          // Get member counts for each team
+          const teamsWithCounts = await Promise.all(
+            ownedTeamsData.map(async (team: any) => {
+              const { count } = await supabase
+                .from('team_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('team_id', team.id);
+              
+              return {
+                team_id: team.id,
+                team_name: team.name,
+                member_count: count || 0
+              };
+            })
+          );
+          setOwnedTeams(teamsWithCounts);
+        }
+
+        // Get teams where user is member but not owner
+        const { data: memberTeamsData, error: memberTeamsError } = await supabase
+          .from('team_members')
+          .select(`
+            team_id,
+            teams!inner(id, name, owner_id)
+          `)
+          .eq('user_id', user.id)
+          .neq('teams.owner_id', user.id);
+        
+        console.log('ProfileEdit: Member teams data:', memberTeamsData, 'Error:', memberTeamsError);
+        if (!memberTeamsError && memberTeamsData) {
+          // Get owner names for each team
+          const teamsWithOwners = await Promise.all(
+            memberTeamsData.map(async (membership: any) => {
+              const { data: ownerData } = await supabase
+                .from('profiles')
+                .select('full_name, username')
+                .eq('id', membership.teams.owner_id)
+                .single();
+              
+              return {
+                team_id: membership.teams.id,
+                team_name: membership.teams.name,
+                owner_name: ownerData?.full_name || ownerData?.username || 'Unknown'
+              };
+            })
+          );
+          setMemberTeams(teamsWithOwners);
+        }
+      }
 
       setLoading(false);
     };
@@ -375,6 +439,59 @@ const ProfileEdit: React.FC = () => {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
           />
         </div>
+
+        {/* Team Information Display */}
+        {(ownedTeams.length > 0 || memberTeams.length > 0) && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Your Teams</label>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4">
+              
+              {/* Teams as Manager */}
+              {ownedTeams.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Manager of:</h4>
+                  <div className="space-y-2">
+                    {ownedTeams.map((team: any) => (
+                      <div key={team.team_id} className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-indigo-500 rounded-full mr-3"></div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {team.member_count} member{team.member_count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Teams as Member */}
+              {memberTeams.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Member of:</h4>
+                  <div className="space-y-2">
+                    {memberTeams.map((team: any) => (
+                      <div key={team.team_id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-gray-400 rounded-full mr-3"></div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Led by {team.owner_name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                Team information is automatically displayed in your public resource profile. Manage teams from the <a href="/teams" className="text-indigo-600 dark:text-indigo-400 hover:underline">Teams page</a>.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work History</label>
