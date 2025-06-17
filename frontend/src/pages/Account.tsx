@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { useDarkMode } from '../contexts/DarkModeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 
 const Account: React.FC = () => {
   const { user, session, loading: authLoading } = useAuth();
+  const { theme, setTheme } = useDarkMode();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
@@ -158,6 +160,62 @@ const Account: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Preferences Section */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4 mt-6">
+            <h3 className="text-lg font-semibold">Preferences</h3>
+            
+            <div>
+              <span className="font-semibold mb-2 block">Theme:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition ${
+                    theme === 'light'
+                      ? 'bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-600'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3.25a.75.75 0 01.75.75v1a.75.75 0 01-1.5 0v-1A.75.75 0 0110 3.25zm0 10a3.25 3.25 0 100-6.5 3.25 3.25 0 000 6.5zm6.75-.75a.75.75 0 000 1.5h1a.75.75 0 000-1.5h-1zm-13.5 0a.75.75 0 000 1.5h1a.75.75 0 000-1.5h-1zm10.72-6.47a.75.75 0 011.06 1.06l-.71.71a.75.75 0 11-1.06-1.06l.71-.71zm-8.49 8.49a.75.75 0 011.06 0l.71.71a.75.75 0 11-1.06 1.06l-.71-.71a.75.75 0 010-1.06zm12.02 1.06a.75.75 0 01-1.06-1.06l.71-.71a.75.75 0 111.06 1.06l-.71.71zm-8.49-8.49a.75.75 0 01-1.06 1.06l-.71-.71a.75.75 0 111.06-1.06l.71.71z" />
+                  </svg>
+                  Light
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition ${
+                    theme === 'dark'
+                      ? 'bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-600'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                  </svg>
+                  Dark
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition ${
+                    theme === 'system'
+                      ? 'bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-600'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                  </svg>
+                  System
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {theme === 'system' 
+                  ? 'Automatically matches your device\'s appearance settings'
+                  : `Always use ${theme} mode`
+                }
+              </p>
+            </div>
+          </div>
         </>
       ) : (
         <p>Could not load profile. Please try editing your profile to create one.</p>
