@@ -1,55 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
 import Account from './pages/Account';
 import ResourceBrowse from './pages/ResourceBrowse';
 import ResourceDetail from './pages/ResourceDetail';
+import ProfileEdit from './pages/ProfileEdit';
 import Navbar from './components/Navbar';
 import './App.css';
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        setSession(session);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
+const App: React.FC = () => {
   return (
     <Router>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </Router>
+  );
+};
+
+const MainApp: React.FC = () => {
+  const { session } = useAuth();
+
+  return (
+    <>
       {session && <Navbar />}
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans transition-colors">
         <Routes>
           <Route path="/" element={session ? <Navigate to="/account" /> : <Landing />} />
           <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/account" />} />
-          <Route path="/account" element={session ? <Account session={session} /> : <Navigate to="/login" />} />
+          <Route path="/account" element={session ? <Account /> : <Navigate to="/login" />} />
+          <Route path="/profile/edit" element={session ? <ProfileEdit /> : <Navigate to="/login" />} />
           <Route path="/resources" element={<ResourceBrowse />} />
           <Route path="/resource/:id" element={<ResourceDetail />} />
         </Routes>
       </div>
-    </Router>
+    </>
   );
-}
+};
 
 export default App;
