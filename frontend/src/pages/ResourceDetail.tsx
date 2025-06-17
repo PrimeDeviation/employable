@@ -11,11 +11,21 @@ interface Resource {
   skills: string[];
   location: string;
   profile_id: string;
+  work_history?: any[];
+  projects?: any[];
+  portfolio_urls?: string[];
 }
 
 interface Profile {
   hourly_rate?: number;
   availability?: string;
+  bio?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  username?: string;
+  full_name?: string;
+  company_name?: string;
+  website?: string;
 }
 
 const ResourceDetail: React.FC = () => {
@@ -40,7 +50,14 @@ const ResourceDetail: React.FC = () => {
           *,
           profile:profiles (
             hourly_rate,
-            availability
+            availability,
+            bio,
+            linkedin_url,
+            github_url,
+            username,
+            full_name,
+            company_name,
+            website
           )
         `)
         .eq('id', id)
@@ -85,27 +102,128 @@ const ResourceDetail: React.FC = () => {
                 </Link>
               )}
             </div>
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-6">
               {resource.skills.map((skill) => (
-                <span key={skill} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 rounded text-xs font-medium">
+                <span key={skill} className="px-3 py-1 bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 rounded-full text-sm font-medium">
                   {skill}
                 </span>
               ))}
             </div>
-            <div className="text-gray-500 dark:text-gray-400 mb-2">Location: {resource.location}</div>
-            
-            {profile?.hourly_rate && (
-              <div className="text-gray-500 dark:text-gray-400 mb-2">
-                Rate: ${profile.hourly_rate}/hr
+
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <div className="text-gray-500 dark:text-gray-400">
+                  <span className="font-medium">Location:</span> {resource.location}
+                </div>
+                {profile?.hourly_rate && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Rate:</span> ${profile.hourly_rate}/hr
+                  </div>
+                )}
+                {profile?.availability && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Availability:</span> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                      profile.availability === 'available' 
+                        ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100'
+                        : profile.availability === 'on-request'
+                        ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100'
+                        : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100'
+                    }`}>
+                      {profile.availability}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-            {profile?.availability && (
-              <div className="text-gray-500 dark:text-gray-400 mb-2">
-                Availability: <span className="capitalize">{profile.availability}</span>
+              <div className="space-y-2">
+                {profile?.company_name && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Company:</span> {profile.company_name}
+                  </div>
+                )}
+                {profile?.website && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Website:</span> 
+                    <a href={profile.website} target="_blank" rel="noopener noreferrer" className="ml-2 text-indigo-600 dark:text-indigo-400 hover:underline">
+                      {profile.website}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bio */}
+            {profile?.bio && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">About</h3>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{profile.bio}</p>
               </div>
             )}
 
-            <div className="text-sm text-gray-400 dark:text-gray-500 mt-4">Resource ID: {resource.id}</div>
+            {/* Work History */}
+            {resource.work_history && resource.work_history.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Work Experience</h3>
+                <div className="space-y-3">
+                  {resource.work_history.map((job: any, index: number) => (
+                    <div key={index} className="border-l-2 border-indigo-200 dark:border-indigo-800 pl-4">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{job.title}</h4>
+                      <p className="text-indigo-600 dark:text-indigo-400">{job.company}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{job.dates}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Projects */}
+            {resource.projects && resource.projects.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Projects</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {resource.projects.map((project: any, index: number) => (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{project.name}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{project.description}</p>
+                      {project.url && (
+                        <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                          View Project →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Portfolio Links */}
+            {(profile?.linkedin_url || profile?.github_url || (resource.portfolio_urls && resource.portfolio_urls.length > 0)) && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Links</h3>
+                <div className="flex flex-wrap gap-3">
+                  {profile?.linkedin_url && (
+                    <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-2 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 rounded-lg text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors">
+                      LinkedIn
+                    </a>
+                  )}
+                  {profile?.github_url && (
+                    <a href={profile.github_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                      GitHub
+                    </a>
+                  )}
+                  {resource.portfolio_urls && resource.portfolio_urls.map((url: string, index: number) => (
+                    <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-2 bg-indigo-100 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-200 dark:hover:bg-indigo-700 transition-colors">
+                      Portfolio
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="text-xs text-gray-400 dark:text-gray-500 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+              Resource ID: {resource.id}
+            </div>
           </div>
         ) : null}
       </div>
