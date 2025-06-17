@@ -19,13 +19,10 @@ const TeamPage: React.FC = () => {
     const fetchTeams = async () => {
       if (!user) return;
       setLoading(true);
-      // We need a way to get all teams a user is a member of.
-      // This will require a more complex query or a database function.
-      // For now, let's just fetch teams the user owns.
+      // RLS policy will filter to only show teams the user is a member of.
       const { data, error } = await supabase
         .from('teams')
-        .select('*')
-        .eq('owner_id', user.id);
+        .select('*');
       
       if (error) {
         console.error('Error fetching teams:', error);
@@ -50,11 +47,10 @@ const TeamPage: React.FC = () => {
     } else {
       alert('Team created successfully!');
       setNewTeamName('');
-      // Refresh the list of teams
+      // Refresh the list of teams by re-fetching
       const { data: newTeamList } = await supabase
         .from('teams')
-        .select('*')
-        .eq('owner_id', user.id);
+        .select('*');
       setTeams(newTeamList || []);
     }
   };
@@ -89,7 +85,7 @@ const TeamPage: React.FC = () => {
             </div>
           ))
         ) : (
-          <p>You are not the owner of any teams. Create one to get started!</p>
+          <p>You are not a member of any teams. Create one to get started!</p>
         )}
       </div>
     </div>
