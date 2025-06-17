@@ -1,4 +1,7 @@
 {
+  "name": "eiu",
+  "version": "0.1.0",
+  "private": true,
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
     "@testing-library/react": "^16.3.0",

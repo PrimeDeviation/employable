@@ -17,13 +17,13 @@ serve(async (req) => {
       services: [
         {
           name: 'getProfile',
-          description: 'Retrieves a user\'s Employable profile, including their bio, skills, role, and location.',
+          description: 'Retrieves a user\'s Employable Units (EIU) profile, including their bio, skills, role, and location.',
           parameters: {
             type: 'object',
             properties: {
               username: {
                 type: 'string',
-                description: 'The username of the Employable profile to retrieve.',
+                description: 'The username of the Employable Units (EIU) profile to retrieve.',
               },
             },
             required: ['username'],
