@@ -61,21 +61,22 @@ const ProfileEdit: React.FC = () => {
       console.error(profileError);
     }
 
-    // Update resource
-    if (resource.id) {
-      const resourceUpdates = {
-        id: resource.id,
-        name: profile.username, // Keep name in sync with profile username
-        ...resource
-      };
-      const { error: resourceError } = await supabase.from('resources').upsert(resourceUpdates);
-      if (resourceError) {
-        alert('Error updating resource data!');
-        console.error(resourceError);
-      }
+    // Update resource - always perform upsert to handle new users
+    const resourceUpdates = {
+      profile_id: user.id, // Required for RLS policy
+      name: profile.username || profile.full_name || user.email, // Keep name in sync with profile
+      role: resource.role || 'Consultant',
+      location: resource.location || 'Remote',
+      skills: resource.skills || [],
+      ...resource
+    };
+    const { error: resourceError } = await supabase.from('resources').upsert(resourceUpdates);
+    if (resourceError) {
+      alert('Error updating resource data!');
+      console.error(resourceError);
     }
 
-    if (!profileError && !resource.id) { // Should check for resource error too
+    if (!profileError && !resourceError) {
       alert('Profile updated successfully!');
       navigate('/account');
     }

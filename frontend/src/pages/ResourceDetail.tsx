@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/button';
 
 interface Resource {
   id: number;
@@ -8,6 +10,7 @@ interface Resource {
   role: string;
   skills: string[];
   location: string;
+  profile_id: string;
 }
 
 interface Profile {
@@ -17,10 +20,14 @@ interface Profile {
 
 const ResourceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [resource, setResource] = useState<Resource | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if current user owns this resource
+  const isOwner = user && resource && user.id === resource.profile_id;
 
   useEffect(() => {
     const fetchResourceAndProfile = async () => {
@@ -65,8 +72,19 @@ const ResourceDetail: React.FC = () => {
           <div className="text-center text-red-500">{error}</div>
         ) : resource ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 transition-colors">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{resource.name}</h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{resource.role}</p>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{resource.name}</h1>
+                <p className="text-lg text-gray-600 dark:text-gray-300">{resource.role}</p>
+              </div>
+              {isOwner && (
+                <Link to="/profile/edit">
+                  <Button variant="outline" size="sm">
+                    Edit Profile
+                  </Button>
+                </Link>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2 mb-4">
               {resource.skills.map((skill) => (
                 <span key={skill} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-700 text-indigo-800 dark:text-indigo-100 rounded text-xs font-medium">
