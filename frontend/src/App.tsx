@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DarkModeProvider } from './contexts/DarkModeContext';
 import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
 import Account from './pages/Account';
@@ -22,7 +23,9 @@ const App: React.FC = () => {
   return (
     <Router>
       <AuthProvider>
-        <MainApp />
+        <DarkModeProvider>
+          <MainApp />
+        </DarkModeProvider>
       </AuthProvider>
     </Router>
   );

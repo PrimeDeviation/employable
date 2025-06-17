@@ -5,7 +5,7 @@ const Landing: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 text-center px-4">
       <div className="max-w-2xl">
-        <h1 className="text-4xl font-extrabold text-indigo-700 dark:text-indigo-300 mb-4">Welcome to Employable Units (EIU)</h1>
+        <h1 className="text-4xl font-extrabold text-indigo-700 dark:text-indigo-300 mb-4">Welcome to Employable Agents</h1>
         <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
           The AI-driven platform for finding your next contract and managing your professional profile. Vibe Contracting starts here.
         </p>

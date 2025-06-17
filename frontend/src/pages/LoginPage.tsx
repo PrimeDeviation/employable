@@ -43,7 +43,7 @@ const LoginPage: React.FC = () => {
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
         <div className="text-center">
           <img src="/logo192.png" alt="Logo" className="w-24 h-24 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Employable Units (EIU)</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Employable Agents</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Sign in to access your account</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
