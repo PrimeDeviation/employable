@@ -101,11 +101,18 @@ const ResourceDetail: React.FC = () => {
                   </Button>
                 </Link>
               ) : user ? (
-                <Link to={`/contact/${resource.id}`}>
-                  <Button size="sm">
-                    Contact Pilot
-                  </Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link to={`/contact/${resource.id}`}>
+                    <Button size="sm">
+                      Contact Pilot
+                    </Button>
+                  </Link>
+                  <Link to={`/contracts/create?resourceId=${resource.id}`}>
+                    <Button variant="outline" size="sm">
+                      Create Contract
+                    </Button>
+                  </Link>
+                </div>
               ) : null}
             </div>
             <div className="flex flex-wrap gap-2 mb-6">

@@ -30,7 +30,7 @@ const navSections = [
     label: 'Engagement',
     links: [
       { to: '/messages', label: 'Messaging/Contact' },
-      { to: '/contract', label: 'Contract/Negotiation' },
+      { to: '/contracts', label: 'Contracts' },
       { to: '/payments', label: 'Payments' },
     ],
   },
