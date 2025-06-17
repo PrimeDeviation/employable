@@ -22,7 +22,7 @@ const ProfileEdit: React.FC = () => {
       // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, bio, github_url, linkedin_url') // Ensure new fields are selected
         .eq('id', user.id)
         .single();
       
@@ -32,7 +32,7 @@ const ProfileEdit: React.FC = () => {
       // Fetch resource data
       const { data: resourceData, error: resourceError } = await supabase
         .from('resources')
-        .select('*')
+        .select('*, skills, work_history, projects, portfolio_urls') // Ensure new fields are selected
         .eq('profile_id', user.id)
         .single();
 
@@ -124,10 +124,15 @@ const ProfileEdit: React.FC = () => {
 
     const prompt = `
       You are an expert resume parser. Analyze the following resume text and extract the user's information into a valid JSON object.
-      The JSON object should have the following keys: "role", "skills", and "bio".
+      The JSON object should have the following keys: "role", "skills", "bio", "work_history", "projects", "linkedin_url", "github_url", "portfolio_urls".
       - "role" should be the user's most recent or primary job title.
       - "skills" should be an array of strings, listing the key technical skills and technologies.
       - "bio" should be a 2-3 sentence professional summary based on the resume's content.
+      - "work_history" should be an array of objects, where each object represents a job and has "company", "title", and "dates" (e.g., "Jan 2020 - Present") keys.
+      - "projects" should be an array of objects, where each object has "name", "description", and "url".
+      - "linkedin_url" should be the user's LinkedIn profile URL as a string, if present.
+      - "github_url" should be the user's GitHub profile URL as a string, if present.
+      - "portfolio_urls" should be an array of strings for other relevant URLs like a personal website.
 
       Do not include any other text or explanation in your response, only the JSON object.
     `;
@@ -148,6 +153,21 @@ const ProfileEdit: React.FC = () => {
       if (parsedData.bio && typeof parsedData.bio === 'string') {
         setProfile((prev: any) => ({ ...prev, bio: parsedData.bio }));
       }
+      if (parsedData.work_history && Array.isArray(parsedData.work_history)) {
+        setResource((prev: any) => ({ ...prev, work_history: parsedData.work_history }));
+      }
+      if (parsedData.projects && Array.isArray(parsedData.projects)) {
+        setResource((prev: any) => ({ ...prev, projects: parsedData.projects }));
+      }
+      if (parsedData.linkedin_url && typeof parsedData.linkedin_url === 'string') {
+        setProfile((prev: any) => ({ ...prev, linkedin_url: parsedData.linkedin_url }));
+      }
+      if (parsedData.github_url && typeof parsedData.github_url === 'string') {
+        setProfile((prev: any) => ({ ...prev, github_url: parsedData.github_url }));
+      }
+      if (parsedData.portfolio_urls && Array.isArray(parsedData.portfolio_urls)) {
+        setResource((prev: any) => ({ ...prev, portfolio_urls: parsedData.portfolio_urls }));
+      }
 
       alert('Resume parsed successfully! Please review the updated fields.');
 
@@ -156,6 +176,46 @@ const ProfileEdit: React.FC = () => {
       alert('An error occurred while parsing the resume. The AI may have returned an invalid format. Please check the console.');
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const handleAiAddProject = async () => {
+    // @ts-ignore
+    if (!window.mcp || !window.mcp.ai.ask) {
+      alert('MCP client not detected. Please connect a compatible AI client like Cursor or Claude to use this feature.');
+      return;
+    }
+
+    const prompt = `
+      You are an expert project analyst. The user wants to add a new project to their profile. 
+      Please interact with the user to get information about one of their projects (e.g., from a GitHub URL or a local directory they specify).
+      
+      Once you have the context, analyze the project and return a single, valid JSON object with the following keys: "name", "description", and "url".
+      - "name": The project's title.
+      - "description": A concise 1-2 sentence summary of the project.
+      - "url": A relevant URL for the project (e.g., GitHub repository, live demo).
+
+      Do not include any other text or explanation in your response, only the JSON object.
+    `;
+
+    try {
+      // @ts-ignore
+      const response = await window.mcp.ai.ask(prompt);
+      const newProject = JSON.parse(response);
+
+      // Basic validation
+      if (newProject.name && newProject.description && newProject.url) {
+        setResource((prev: any) => ({
+          ...prev,
+          projects: [...(prev.projects || []), newProject],
+        }));
+        alert('Project added! Please review and save your profile.');
+      } else {
+        alert('The AI returned an invalid project format. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding project with MCP client:', error);
+      alert('An error occurred while adding the project. The AI may have returned an invalid format. Please check the console.');
     }
   };
 
@@ -245,6 +305,28 @@ const ProfileEdit: React.FC = () => {
           </select>
         </div>
         <div>
+          <label htmlFor="linkedin_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300">LinkedIn URL</label>
+          <input
+            type="url"
+            id="linkedin_url"
+            name="linkedin_url"
+            value={profile.linkedin_url || ''}
+            onChange={handleProfileChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
+          />
+        </div>
+        <div>
+          <label htmlFor="github_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300">GitHub URL</label>
+          <input
+            type="url"
+            id="github_url"
+            name="github_url"
+            value={profile.github_url || ''}
+            onChange={handleProfileChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
+          />
+        </div>
+        <div>
           <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
           <textarea
             id="bio"
@@ -255,12 +337,12 @@ const ProfileEdit: React.FC = () => {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
           />
         </div>
-        <hr className="my-8" />
-        <h2 className="text-xl font-bold mb-4">Your Public Resource Profile</h2>
+        <hr className="my-8 border-gray-300 dark:border-gray-600" />
+        <h2 className="text-xl font-bold mb-4">Your Public Resource Details</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">This is the information that will be visible to others in the resource browser.</p>
         
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
+          <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Primary Role</label>
           <input
             type="text"
             id="role"
@@ -287,16 +369,43 @@ const ProfileEdit: React.FC = () => {
             type="text"
             id="skills"
             name="skills"
-            value={Array.isArray(resource.skills) ? resource.skills.join(', ') : ''}
+            value={resource.skills ? resource.skills.join(', ') : ''}
             onChange={handleSkillsChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
           />
         </div>
 
-        <div className="flex justify-end space-x-4 mt-8">
-          <Button type="button" variant="outline" onClick={() => navigate('/account')}>Cancel</Button>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work History</label>
+          {resource.work_history && resource.work_history.map((job: any, index: number) => (
+            <div key={index} className="mt-2 p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+              <p className="font-semibold">{job.title} at {job.company}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{job.dates}</p>
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Projects</label>
+          <div className="space-y-2">
+            {resource.projects && resource.projects.map((project: any, index: number) => (
+              <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+                <p className="font-semibold">{project.name}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 my-1">{project.description}</p>
+                <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                  View Project
+                </a>
+              </div>
+            ))}
+          </div>
+          <Button type="button" onClick={handleAiAddProject} className="mt-2" variant="outline">
+            Add Project with AI
+          </Button>
+        </div>
+
+        <div className="flex justify-end pt-4">
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Profile'}
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </form>

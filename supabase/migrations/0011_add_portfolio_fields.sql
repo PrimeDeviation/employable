@@ -1,0 +1,7 @@
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS github_url TEXT,
+ADD COLUMN IF NOT EXISTS linkedin_url TEXT;
+
+ALTER TABLE public.resources
+ADD COLUMN IF NOT EXISTS projects JSONB,
+ADD COLUMN IF NOT EXISTS portfolio_urls TEXT[]; 

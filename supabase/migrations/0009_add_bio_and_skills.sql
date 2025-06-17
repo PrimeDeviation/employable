@@ -1,0 +1,5 @@
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS bio TEXT;
+
+ALTER TABLE public.resources
+ADD COLUMN IF NOT EXISTS skills TEXT[]; 

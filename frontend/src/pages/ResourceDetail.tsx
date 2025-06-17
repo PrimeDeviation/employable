@@ -10,25 +10,49 @@ interface Resource {
   location: string;
 }
 
+interface Profile {
+  hourly_rate?: number;
+  availability?: string;
+}
+
 const ResourceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [resource, setResource] = useState<Resource | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchResource = async () => {
+    const fetchResourceAndProfile = async () => {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase.from('resources').select('*').eq('id', id).single();
-      if (error) {
+
+      const { data: resourceData, error: resourceError } = await supabase
+        .from('resources')
+        .select(`
+          *,
+          profile:profiles (
+            hourly_rate,
+            availability
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (resourceError) {
         setError('Resource not found.');
-      } else {
-        setResource(data);
+        setLoading(false);
+        return;
       }
+      
+      setResource(resourceData);
+      if (resourceData.profile) {
+        setProfile(resourceData.profile);
+      }
+
       setLoading(false);
     };
-    if (id) fetchResource();
+    if (id) fetchResourceAndProfile();
   }, [id]);
 
   return (
@@ -51,7 +75,19 @@ const ResourceDetail: React.FC = () => {
               ))}
             </div>
             <div className="text-gray-500 dark:text-gray-400 mb-2">Location: {resource.location}</div>
-            <div className="text-sm text-gray-400 dark:text-gray-500">Resource ID: {resource.id}</div>
+            
+            {profile?.hourly_rate && (
+              <div className="text-gray-500 dark:text-gray-400 mb-2">
+                Rate: ${profile.hourly_rate}/hr
+              </div>
+            )}
+            {profile?.availability && (
+              <div className="text-gray-500 dark:text-gray-400 mb-2">
+                Availability: <span className="capitalize">{profile.availability}</span>
+              </div>
+            )}
+
+            <div className="text-sm text-gray-400 dark:text-gray-500 mt-4">Resource ID: {resource.id}</div>
           </div>
         ) : null}
       </div>

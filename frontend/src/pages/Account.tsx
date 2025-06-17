@@ -5,30 +5,33 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 
 const Account: React.FC = () => {
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     const getProfile = async () => {
-      if (!user) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`username, website, avatar_url, company_name, bio`)
-        .eq('id', user.id)
-        .single();
-      
-      if (error) {
-        console.warn(error);
-      } else if (data) {
-        setProfile(data);
+      if (!authLoading && user) {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`username, website, avatar_url, company_name, bio`)
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.warn(error);
+        } else if (data) {
+          setProfile(data);
+        }
+        setLoading(false);
+      } else if (!authLoading && !user) {
+        setLoading(false);
       }
-      setLoading(false);
     };
     getProfile();
-  }, [user]);
+  }, [user, authLoading]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

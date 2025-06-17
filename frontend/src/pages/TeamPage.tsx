@@ -10,30 +10,32 @@ interface Team {
 }
 
 const TeamPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTeamName, setNewTeamName] = useState('');
 
   useEffect(() => {
     const fetchTeams = async () => {
-      if (!user) return;
-      setLoading(true);
-      // RLS policy will filter to only show teams the user is a member of.
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching teams:', error);
-      } else {
-        setTeams(data || []);
+      if (!authLoading && user) {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('teams')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching teams:', error);
+        } else {
+          setTeams(data || []);
+        }
+        setLoading(false);
+      } else if (!authLoading && !user) {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchTeams();
-  }, [user]);
+  }, [user, authLoading]);
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
