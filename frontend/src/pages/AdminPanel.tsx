@@ -30,7 +30,6 @@ const AdminPanel: React.FC = () => {
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
   const [promoting, setPromoting] = useState(false);
-  const [claimingTeams, setClaimingTeams] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -90,46 +89,7 @@ const AdminPanel: React.FC = () => {
     setLoading(false);
   };
 
-  const createTestTeam = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase.rpc('create_team', {
-      name: 'Test AI Agent Team'
-    });
 
-    if (error) {
-      console.error('Error creating team:', error);
-      alert('Error creating team: ' + error.message);
-    } else {
-      alert('Test team created successfully!');
-      fetchTeams();
-    }
-  };
-
-  const debugTeams = async () => {
-    console.log('=== TEAM DEBUG INFO ===');
-    console.log('Current user ID:', user?.id);
-    console.log('Teams state:', teams);
-    
-    // Fetch teams without any filters to see what's actually there
-    const { data: allTeams, error } = await supabase
-      .from('teams')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    console.log('Raw teams from database:', allTeams);
-    console.log('Error:', error);
-    
-    // Check team_members table
-    const { data: memberships, error: memberError } = await supabase
-      .from('team_members')
-      .select('*');
-    
-    console.log('Team memberships:', memberships);
-    console.log('Membership error:', memberError);
-    
-    alert('Debug info logged to console. Check browser dev tools.');
-  };
 
   const promoteToAdmin = async (userId: string) => {
     setPromoting(true);
@@ -154,25 +114,7 @@ const AdminPanel: React.FC = () => {
     setPromoting(false);
   };
 
-  const claimOrphanedTeams = async () => {
-    if (!user) return;
-    
-    setClaimingTeams(true);
-    
-    const { data, error } = await supabase.rpc('claim_orphaned_teams', {
-      new_owner_id: user.id
-    });
 
-    if (error) {
-      console.error('Error claiming teams:', error);
-      alert('Error claiming orphaned teams.');
-    } else {
-      alert(`Successfully claimed ${data} orphaned teams!`);
-      fetchTeams();
-    }
-    
-    setClaimingTeams(false);
-  };
 
   const assignTeamOwnership = async (teamId: number, newOwnerId: string) => {
     const { data, error } = await supabase.rpc('assign_team_ownership', {
@@ -295,30 +237,6 @@ const AdminPanel: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Teams Management
               </h2>
-                             <div className="flex gap-2">
-                 <Button
-                   size="sm"
-                   onClick={claimOrphanedTeams}
-                   disabled={claimingTeams}
-                   variant="outline"
-                 >
-                   {claimingTeams ? 'Claiming...' : 'Claim Orphaned Teams'}
-                 </Button>
-                 <Button
-                   size="sm"
-                   onClick={createTestTeam}
-                   variant="outline"
-                 >
-                   Create Test Team
-                 </Button>
-                 <Button
-                   size="sm"
-                   onClick={debugTeams}
-                   variant="outline"
-                 >
-                   Debug Teams
-                 </Button>
-               </div>
             </div>
             
             <div className="space-y-3">
