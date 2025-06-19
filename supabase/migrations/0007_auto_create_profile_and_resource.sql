@@ -9,8 +9,8 @@ begin
   insert into public.profiles (id, username, full_name, avatar_url)
   values (
     new.id,
-    new.raw_user_meta_data ->> 'user_name', -- From GitHub/etc.
-    new.raw_user_meta_data ->> 'full_name',
+    COALESCE(new.raw_user_meta_data ->> 'user_name', new.email), -- Use email as fallback
+    COALESCE(new.raw_user_meta_data ->> 'full_name', new.email), -- Use email as fallback
     new.raw_user_meta_data ->> 'avatar_url'
   );
 
@@ -18,7 +18,7 @@ begin
   insert into public.resources (profile_id, name, role, location, skills)
   values (
     new.id,
-    new.raw_user_meta_data ->> 'full_name', -- Use full_name for resource name
+    COALESCE(new.raw_user_meta_data ->> 'full_name', new.email), -- Use email as fallback for resource name
     'Consultant', -- Default role
     'Remote',     -- Default location
     '{}'          -- Default empty skills array

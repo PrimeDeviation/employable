@@ -171,25 +171,21 @@ const ResourceBrowse: React.FC = () => {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-6xl mx-auto">
           {filtered.map((res) => (
             <Link to={`/resource/${res.id}`} key={res.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col transition-colors hover:ring-2 hover:ring-indigo-400 focus:outline-none">
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{res.profile?.full_name || res.name}</h2>
-                {res.profile?.username && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-1">{res.profile.username}</div>
-                )}
-                {res.profile?.email && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-1">{res.profile.email}</div>
-                )}
-                {res.profile?.availability && (
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    res.profile.availability === 'available' 
-                      ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100'
-                      : res.profile.availability === 'on-request'
-                      ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100'
-                      : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100'
-                  }`}>
-                    {res.profile.availability}
-                  </span>
-                )}
+              <div className="mb-2">
+                <div className="flex justify-between items-start mb-1">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate pr-2 flex-1">{res.profile?.full_name || res.name}</h2>
+                  {res.profile?.availability && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                      res.profile.availability === 'available' 
+                        ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100'
+                        : res.profile.availability === 'on-request'
+                        ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100'
+                        : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100'
+                    }`}>
+                      {res.profile.availability}
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="text-gray-600 dark:text-gray-300 mb-2">{res.role}</p>
               <div className="flex flex-wrap gap-2 mb-3">

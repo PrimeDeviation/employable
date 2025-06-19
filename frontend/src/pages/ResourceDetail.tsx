@@ -235,7 +235,9 @@ const ResourceDetail: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{profile?.full_name || profile?.username || resource.name}</h1>
                 {profile?.username && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-2">{profile.username}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    <span className="font-medium">Email:</span> {profile.username}
+                  </div>
                 )}
                 <p className="text-lg text-gray-600 dark:text-gray-300">{resource.role}</p>
               </div>
