@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
+import TeamInviteModal from '../components/TeamInviteModal';
 
 interface Resource {
   id: number;
@@ -49,6 +50,9 @@ const ResourceDetail: React.FC = () => {
   const [memberTeams, setMemberTeams] = useState<TeamMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [userOwnedTeams, setUserOwnedTeams] = useState<TeamOwnership[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
 
   // Check if current user owns this resource
   const isOwner = user && resource && user.id === resource.profile_id;
@@ -63,13 +67,14 @@ const ResourceDetail: React.FC = () => {
         .select(`
           *,
           profile:profiles (
+            full_name,
+            username,
             hourly_rate,
             availability,
             bio,
             linkedin_url,
             github_url,
             username,
-            full_name,
             company_name,
             website
           )
@@ -150,10 +155,71 @@ const ResourceDetail: React.FC = () => {
         }
       }
 
+      // Fetch current user's owned teams (for invitation functionality)
+      if (user) {
+        console.log('Fetching teams for current user ID:', user.id);
+        const { data: userOwnedTeamsData, error: userOwnedTeamsError } = await supabase
+          .from('teams')
+          .select('id, name, owner_id')
+          .eq('owner_id', user.id);
+        
+        console.log('Current user owned teams data:', userOwnedTeamsData, 'Error:', userOwnedTeamsError);
+        if (!userOwnedTeamsError && userOwnedTeamsData) {
+          // Get member counts for each team
+          const teamsWithCounts = await Promise.all(
+            userOwnedTeamsData.map(async (team: any) => {
+              const { count } = await supabase
+                .from('team_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('team_id', team.id);
+              
+              return {
+                team_id: team.id,
+                team_name: team.name,
+                member_count: count || 0
+              };
+            })
+          );
+          console.log('Teams with counts:', teamsWithCounts);
+          setUserOwnedTeams(teamsWithCounts);
+        }
+      }
+
       setLoading(false);
     };
     if (id) fetchResourceAndProfile();
   }, [id]);
+
+  useEffect(() => {
+    const fetchInvites = async () => {
+      if (user && isOwner) {
+        const { data } = await supabase
+          .from('team_invitations')
+          .select('id, team_id, team:teams(name)')
+          .eq('invitee_email', user.email)
+          .eq('status', 'pending');
+        setPendingInvites(data || []);
+      }
+    };
+    fetchInvites();
+  }, [user, isOwner]);
+
+  const handleInviteToTeam = () => {
+    setInviteModalOpen(true);
+  };
+
+  const handleAcceptInvite = async (inviteId: string) => {
+    const { error } = await supabase.rpc('accept_team_invitation', { p_invitation_id: inviteId });
+    if (!error) {
+      setPendingInvites(pendingInvites.filter(inv => inv.id !== inviteId));
+      // Optionally refresh teams here
+    } else {
+      alert('Failed to accept invitation');
+    }
+  };
+
+  // Debug logging
+  console.log('ResourceDetail render - user:', user?.id, 'userOwnedTeams:', userOwnedTeams.length, 'isOwner:', isOwner);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors flex flex-col items-center">
@@ -167,7 +233,10 @@ const ResourceDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 transition-colors">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{resource.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{profile?.full_name || profile?.username || resource.name}</h1>
+                {profile?.username && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-2">{profile.username}</div>
+                )}
                 <p className="text-lg text-gray-600 dark:text-gray-300">{resource.role}</p>
               </div>
               {isOwner ? (
@@ -188,6 +257,11 @@ const ResourceDetail: React.FC = () => {
                       Create Contract
                     </Button>
                   </Link>
+                  {userOwnedTeams.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={handleInviteToTeam}>
+                      Invite to Team ({userOwnedTeams.length} teams)
+                    </Button>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -357,12 +431,35 @@ const ResourceDetail: React.FC = () => {
               </div>
             )}
 
+            {isOwner && pendingInvites.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Pending Team Invitations</h3>
+                {pendingInvites.map(invite => (
+                  <div key={invite.id} className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-2">
+                    <span>{invite.team.name}</span>
+                    <Button onClick={() => handleAcceptInvite(invite.id)}>Accept Invitation</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="text-xs text-gray-400 dark:text-gray-500 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
               Resource ID: {resource.id}
             </div>
           </div>
         ) : null}
       </div>
+
+      {/* Team Invitation Modal */}
+      {inviteModalOpen && (
+        <TeamInviteModal
+          isOpen={inviteModalOpen}
+          onClose={() => {
+            setInviteModalOpen(false);
+          }}
+          userTeams={userOwnedTeams}
+        />
+      )}
     </div>
   );
 };

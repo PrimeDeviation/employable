@@ -108,7 +108,7 @@ const AvailabilityManager: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {profile.username || profile.full_name || 'Pilot'}
+              {profile.full_name || 'Pilot'}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Human Pilot</div>
           </div>

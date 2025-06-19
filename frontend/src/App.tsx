@@ -32,7 +32,11 @@ const App: React.FC = () => {
 };
 
 const MainApp: React.FC = () => {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">Loading...</div>;
+  }
 
   return (
     <>

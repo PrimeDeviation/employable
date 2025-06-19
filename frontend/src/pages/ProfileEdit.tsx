@@ -311,15 +311,16 @@ const ProfileEdit: React.FC = () => {
       <form onSubmit={handleUpdate} className="space-y-6">
         <h2 className="text-xl font-bold mb-4">Your Private Details</h2>
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+          <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
           <input
             type="text"
-            id="username"
-            name="username"
-            value={profile.username || ''}
+            id="full_name"
+            name="full_name"
+            value={profile.full_name || ''}
             onChange={handleProfileChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-800"
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This is the name others will see.</p>
         </div>
         <div>
           <label htmlFor="company_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Company Name</label>

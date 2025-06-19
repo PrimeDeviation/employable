@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+CWD Integrity Rule: For any run_terminal_cmd call, never assume the CWD. For location-dependent commands, either use absolute paths for all files or check your CWD and atomically cd to the correct directory as part of the command (e.g., cd frontend && npm install). This is non-negotiable.

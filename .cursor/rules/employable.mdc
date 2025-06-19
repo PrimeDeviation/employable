@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+FSD Architecture Rule: Strictly enforce Feature-Sliced Design (FSD) for all new code. New features go in frontend/src/features/*, must be self-contained with a public API in index.ts, and must not import from other features. Use frontend/src/shared/ for generic code. No new features in legacy frontend/src/pages/.

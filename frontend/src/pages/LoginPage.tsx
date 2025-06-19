@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button';
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('individual_contributor');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -13,11 +12,6 @@ const LoginPage: React.FC = () => {
       setLoading(true);
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          data: {
-            role: role,
-          },
-        },
       });
       if (error) throw error;
       alert('Check your email for the login link!');
@@ -59,21 +53,6 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
-          </div>
-          <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              I am a...
-            </label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="individual_contributor">Consultant (Individual)</option>
-              <option value="team_leader">Consultant (Team Leader)</option>
-              <option value="hiring_organization">Hiring Organization</option>
-            </select>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Sending...' : 'Send magic link'}

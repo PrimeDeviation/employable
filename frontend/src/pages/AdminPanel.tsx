@@ -89,8 +89,6 @@ const AdminPanel: React.FC = () => {
     setLoading(false);
   };
 
-
-
   const promoteToAdmin = async (userId: string) => {
     setPromoting(true);
     
@@ -113,8 +111,6 @@ const AdminPanel: React.FC = () => {
     
     setPromoting(false);
   };
-
-
 
   const assignTeamOwnership = async (teamId: number, newOwnerId: string) => {
     const { data, error } = await supabase.rpc('assign_team_ownership', {
@@ -175,20 +171,8 @@ const AdminPanel: React.FC = () => {
 
       {/* Admin Actions */}
       {userRole !== 'admin' && (
-        <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
-            Become Admin
-          </h3>
-          <p className="text-yellow-700 dark:text-yellow-300 text-sm mb-4">
-            You need admin privileges to manage teams and users. If you're the first user or current admin, you can promote yourself.
-          </p>
-          <Button
-            onClick={() => promoteToAdmin(user?.id || '')}
-            disabled={promoting}
-            variant="outline"
-          >
-            {promoting ? 'Promoting...' : 'Promote Myself to Admin'}
-          </Button>
+        <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
+          <p>Admin privileges required to view management panels.</p>
         </div>
       )}
 
@@ -282,12 +266,6 @@ const AdminPanel: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {userRole !== 'admin' && (
-        <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
-          <p>Admin privileges required to view management panels.</p>
         </div>
       )}
     </div>

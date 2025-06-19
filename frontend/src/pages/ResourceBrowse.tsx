@@ -12,6 +12,9 @@ interface Resource {
   profile?: {
     hourly_rate?: number;
     availability?: string;
+    full_name?: string;
+    email?: string;
+    username?: string;
   };
 }
 
@@ -35,6 +38,8 @@ const ResourceBrowse: React.FC = () => {
         .select(`
           *,
           profile:profiles (
+            full_name,
+            username,
             hourly_rate,
             availability
           )
@@ -167,7 +172,13 @@ const ResourceBrowse: React.FC = () => {
           {filtered.map((res) => (
             <Link to={`/resource/${res.id}`} key={res.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col transition-colors hover:ring-2 hover:ring-indigo-400 focus:outline-none">
               <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{res.name}</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{res.profile?.full_name || res.name}</h2>
+                {res.profile?.username && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-1">{res.profile.username}</div>
+                )}
+                {res.profile?.email && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 break-all mb-1">{res.profile.email}</div>
+                )}
                 {res.profile?.availability && (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     res.profile.availability === 'available' 

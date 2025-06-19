@@ -21,7 +21,7 @@ const Account: React.FC = () => {
         // Get profile data
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select(`username, website, avatar_url, company_name, bio, hourly_rate, availability`)
+          .select(`username, website, avatar_url, company_name, bio, hourly_rate, availability, full_name`)
           .eq('id', user.id)
           .single();
         
@@ -80,7 +80,7 @@ const Account: React.FC = () => {
               <span className="font-semibold">Email:</span> {session?.user.email}
             </div>
             <div>
-              <span className="font-semibold">Username:</span> {profile.username || 'Not set'}
+              <span className="font-semibold">Full Name:</span> {profile.full_name || 'Not set'}
             </div>
             <div>
               <span className="font-semibold">Company:</span> {profile.company_name || 'Not set'}
