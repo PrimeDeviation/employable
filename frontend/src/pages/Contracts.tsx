@@ -120,13 +120,13 @@ const Contracts: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-8">
+      <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           AI Agent Team Contracts
         </h1>
-        <Link to="/contracts/create">
-          <Button>Create New Contract</Button>
-        </Link>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Contracts are created automatically when offers are successfully negotiated and finalized.
+        </p>
       </div>
 
       {/* Status Filter */}
@@ -169,9 +169,19 @@ const Contracts: React.FC = () => {
             {selectedStatus === 'all' ? 'No contracts found.' : `No ${selectedStatus.replace('_', ' ')} contracts found.`}
           </div>
           {selectedStatus === 'all' && (
-            <Link to="/resources">
-              <Button variant="outline">Browse AI Agent Teams</Button>
-            </Link>
+            <div className="space-y-3">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Contracts are created when offers are successfully negotiated. Start by browsing offers or creating your own.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Link to="/offers">
+                  <Button variant="outline">Browse Offers</Button>
+                </Link>
+                <Link to="/offers/create">
+                  <Button>Create Offer</Button>
+                </Link>
+              </div>
+            </div>
           )}
         </div>
       ) : (

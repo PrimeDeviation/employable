@@ -2,114 +2,106 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { v4 as uuidv4 } from "https://deno.land/std@0.168.0/uuid/mod.ts";
 
-const MCP_PROTOCOL_VERSION = '1.0';
+const MCP_PROTOCOL_VERSION = '2024-11-05';
 
-// Handler for WebSocket connections
+// --- WebSocket Handler ---
 function handleWebSocket(socket: WebSocket) {
   socket.onopen = () => {
-    console.log("WebSocket connection established.");
+    console.log('WebSocket connection opened');
+    
+    // Send initial server info
+    const serverInfo = {
+      jsonrpc: '2.0',
+      method: 'notifications/initialized',
+      params: {
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: {
+          name: 'employable-profiles',
+          version: '1.0.0'
+        }
+      }
+    };
+    
+    socket.send(JSON.stringify(serverInfo));
   };
 
   socket.onmessage = async (event) => {
     try {
       const message = JSON.parse(event.data);
-
-      if (message.performative === 'CONTEXT_SUBSCRIBE') {
-        const token = message.payload?.authentication_token;
-        if (!token) {
-          socket.send(JSON.stringify({ error: "Authentication token is required for CONTEXT_SUBSCRIBE" }));
-          return;
-        }
-
-        try {
-          let user = null;
-          
-          // Try MCP token authentication first
-          if (token.startsWith('mcp_')) {
-            const supabaseClient = createClient(
-              Deno.env.get('SUPABASE_URL')!,
-              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-            );
-            
-            const { data: userId, error: tokenError } = await supabaseClient.rpc('validate_mcp_token', {
-              p_token: token
-            });
-            
-            if (tokenError || !userId) {
-              throw new Error("Invalid MCP token");
-            }
-            
-            // Get user data from auth.users
-            const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
-            if (userError || !userData.user) {
-              throw new Error("User not found");
-            }
-            
-            user = userData.user;
-          } else {
-            // Fall back to regular Supabase auth token
-            const supabaseClient = createClient(
-              Deno.env.get('SUPABASE_URL')!,
-              Deno.env.get('SUPABASE_ANON_KEY')!,
-              { global: { headers: { Authorization: `Bearer ${token}` } } }
-            );
-
-            const { data: authData, error } = await supabaseClient.auth.getUser();
-            if (error || !authData.user) {
-              throw new Error(error?.message || "Invalid authentication token");
-            }
-            
-            user = authData.user;
-          }
-
-          if (!user) {
-            throw new Error("Authentication failed");
-          }
-
-          console.log(`Agent authenticated as user: ${user.id}`);
-          // TODO: Store agent session state
-          
-          socket.send(JSON.stringify({
-            protocol_version: MCP_PROTOCOL_VERSION,
-            message_id: uuidv4(),
-            timestamp: new Date().toISOString(),
-            source_agent_id: 'mcp-server',
-            performative: 'CONTEXT_EVENT',
-            payload: {
-              event_type: 'SUBSCRIPTION_CONFIRMED',
-              data: {
-                message: `Successfully subscribed as user ${user.id}`
+      console.log('Received message:', message);
+      
+      if (message.method === 'tools/list') {
+        const response = {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            tools: [
+              {
+                name: 'getProfile',
+                description: 'Retrieves a user\'s public Employable Agents profile, if they have enabled MCP access.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    username: {
+                      type: 'string',
+                      description: 'The username of the Employable Agents profile to retrieve.',
+                    },
+                  },
+                  required: ['username'],
+                },
+              },
+              {
+                name: 'getMyProfile',
+                description: 'Retrieves the authenticated user\'s own full Employable Agents profile.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                },
+              },
+              {
+                name: 'updateMyProfile',
+                description: 'Updates the authenticated user\'s own Employable Agents profile.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    bio: {
+                      type: 'string',
+                      description: 'Professional bio',
+                    },
+                    company_name: {
+                      type: 'string',
+                      description: 'Company name',
+                    },
+                    website: {
+                      type: 'string',
+                      description: 'Website URL',
+                    },
+                  },
+                },
               }
-            }
-          }));
-
-        } catch (authError) {
-          console.error("Authentication failed:", authError.message);
-          socket.send(JSON.stringify({ error: "Authentication failed" }));
-        }
-
-      } else {
-        console.log("Received MCP message:", message);
-        // TODO: Implement other performatives
-        socket.send(JSON.stringify({ status: "received", message_id: message.message_id }));
+            ]
+          }
+        };
+        socket.send(JSON.stringify(response));
       }
     } catch (error) {
-      console.error("Failed to parse incoming message:", error);
-      socket.send(JSON.stringify({ error: "Invalid JSON format" }));
+      console.error('Error handling WebSocket message:', error);
     }
   };
 
   socket.onclose = () => {
-    console.log("WebSocket connection closed.");
+    console.log('WebSocket connection closed');
   };
 
   socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
+    console.error('WebSocket error:', error);
   };
 }
 
-// --- Unified Authentication and Authorization ---
-
+// --- Authentication ---
 interface AuthResult {
   userId: string;
   scopes: string[];
@@ -117,86 +109,78 @@ interface AuthResult {
 
 async function authenticateRequest(req: Request): Promise<AuthResult | null> {
   const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (!token) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
 
-  const supabaseAdmin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  // Strategy 1: Custom JWT MCP Token (preferred for MCP clients)
-  // Try JWT validation first for tokens that look like JWTs (have dots)
-  if (token.includes('.')) {
-    try {
-      const { data: userId, error } = await supabaseAdmin.rpc('validate_mcp_jwt_token', { p_token: token });
-      if (!error && userId) {
-        // JWT tokens get full access for now, but we could extract scopes from the JWT payload
-        return { userId, scopes: ['*'] };
-      }
-    } catch (error) {
-      console.log('Custom JWT validation failed, trying other methods:', error);
-    }
-  }
-
-  // Strategy 2: Legacy MCP API Key (hash-based)
-  if (token.startsWith('mcp_')) {
-    const { data: userId, error } = await supabaseAdmin.rpc('validate_mcp_token', { p_token: token });
-    if (error || !userId) return null;
-    // API keys get full access for now.
-    return { userId, scopes: ['*'] };
-  }
-
-  // Strategy 3: Standard Supabase JWT for logged-in users
+  const token = authHeader.substring(7);
+  
   try {
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return null;
-    // Standard users get basic read access.
-    return { userId: user.id, scopes: ['profile:read'] };
-  } catch (e) {
-    // This will catch invalid JWTs
+
+    // Validate the MCP token
+    const { data: tokenData, error } = await supabaseAdmin
+      .from('mcp_tokens')
+      .select('user_id, scopes, expires_at')
+      .eq('token', token)
+      .single();
+
+    if (error || !tokenData) {
+      console.log('Token validation failed:', error);
+      return null;
+    }
+
+    // Check if token is expired
+    if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+      console.log('Token expired');
+      return null;
+    }
+
+    return {
+      userId: tokenData.user_id,
+      scopes: tokenData.scopes || []
+    };
+  } catch (error) {
+    console.error('Authentication error:', error);
     return null;
   }
 }
 
 function hasPermission(authResult: AuthResult, requiredScope: string): boolean {
-  if (!authResult) return false;
-  // The '*' scope grants all permissions
-  if (authResult.scopes.includes('*')) return true;
-  // Check for the specific required scope
-  return authResult.scopes.includes(requiredScope);
+  return authResult.scopes.includes(requiredScope) || authResult.scopes.includes('*');
 }
 
+// --- Main Handler ---
 serve(async (req) => {
   const url = new URL(req.url);
-  console.log(`Incoming request: ${req.method} ${url.pathname}`);
   
-  // Handle WebSocket upgrade requests
-  if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
+
+  // Handle WebSocket upgrade
+  if (req.headers.get('upgrade') === 'websocket') {
     const { socket, response } = Deno.upgradeWebSocket(req);
     handleWebSocket(socket);
     return response;
   }
 
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } });
-  }
-
-  // --- MCP Protocol Discovery ---
-  // On GET / or /mcp-server, return the list of services
-  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/mcp-server')) {
+  // --- MCP Tool Discovery ---
+  // On GET /, return the list of available tools
+  if (req.method === 'GET' && url.pathname === '/') {
     const responseBody = {
-      mcp_protocol_version: MCP_PROTOCOL_VERSION,
-      services: [
+      tools: [
         {
           name: 'getProfile',
           description: 'Retrieves a user\'s public Employable Agents profile, if they have enabled MCP access.',
@@ -292,7 +276,6 @@ Company: ${data.company_name || 'Not provided'}
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       } catch (error) {
-        // This error now means the profile couldn't be fetched, not that auth failed.
         return new Response(JSON.stringify({ error: 'Could not retrieve profile.' }), { 
           status: 404, 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 

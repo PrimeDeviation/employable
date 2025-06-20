@@ -16,6 +16,7 @@ import Contracts from './pages/Contracts';
 import ContractCreate from './pages/ContractCreate';
 import ContractDetail from './pages/ContractDetail';
 import AdminPanel from './pages/AdminPanel';
+import { OfferCreationPage, OfferBrowsePage, OfferDetailPage } from './features/offer-management';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -51,6 +52,9 @@ const MainApp: React.FC = () => {
           <Route path="/availability" element={session ? <AvailabilityManager /> : <Navigate to="/login" />} />
           <Route path="/messages" element={session ? <Messages /> : <Navigate to="/login" />} />
           <Route path="/contact/:resourceId" element={session ? <ContactPilot /> : <Navigate to="/login" />} />
+          <Route path="/offers" element={session ? <OfferBrowsePage /> : <Navigate to="/login" />} />
+          <Route path="/offers/create" element={session ? <OfferCreationPage /> : <Navigate to="/login" />} />
+          <Route path="/offers/:id" element={session ? <OfferDetailPage /> : <Navigate to="/login" />} />
           <Route path="/contracts" element={session ? <Contracts /> : <Navigate to="/login" />} />
           <Route path="/contracts/create" element={session ? <ContractCreate /> : <Navigate to="/login" />} />
           <Route path="/contracts/:contractId" element={session ? <ContractDetail /> : <Navigate to="/login" />} />

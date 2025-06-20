@@ -3,4 +3,4 @@ description:
 globs: 
 alwaysApply: true
 ---
-DB Reset: NEVER perform a local or remote db reset without express permission from the user. NEVER
+DB Reset: NEVER perform a local or remote db reset, or a push to remote without express permission from the user. NEVER

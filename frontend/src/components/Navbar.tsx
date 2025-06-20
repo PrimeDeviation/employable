@@ -2,89 +2,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
-const navSections = [
-  {
-    label: 'Core',
-    links: [
-      { to: '/', label: 'Home' },
-      { to: '/login', label: 'Login' },
-      { to: '/account', label: 'Account' },
-    ],
-  },
-  {
-    label: 'Resources',
-    links: [
-      { to: '/resources', label: 'Browse' },
-      { to: '/search', label: 'Search/Filtering' },
-      { to: '/resource/:id', label: 'Detailed View' },
-    ],
-  },
-  {
-    label: 'Team & Management',
-    links: [
-      { to: '/teams', label: 'My Teams' },
-      { to: '/resource-management', label: 'Resource Management' },
-      { to: '/availability', label: 'Availability/Rate' },
-    ],
-  },
-  {
-    label: 'Engagement',
-    links: [
-      { to: '/messages', label: 'Messaging/Contact' },
-      { to: '/contracts', label: 'Contracts' },
-      { to: '/payments', label: 'Payments' },
-    ],
-  },
-  {
-    label: 'Profile',
-    links: [
-      { to: '/profile', label: 'Profile Population' },
-    ],
-  },
-  {
-    label: 'System',
-    links: [
-      { to: '/admin', label: 'Admin Panel' },
-    ],
-  },
+// Direct navigation links
+const directLinks = [
+  { to: '/resources', label: 'Browse Resources' },
+  { to: '/offers', label: 'Browse Offers' },
+  { to: '/contracts', label: 'Contracts' },
+  { to: '/teams', label: 'My Teams' },
+  { to: '/account', label: 'Profile' },
 ];
 
 const Navbar: React.FC = () => {
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const navRefs = useRef<(HTMLDivElement | null)[]>([]);
   const { theme, isDark, setTheme } = useDarkMode();
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLButtonElement | null>(null);
 
-  const handleMouseEnter = (sectionLabel: string) => {
-    // Clear any pending close timeout
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setOpenSection(sectionLabel);
-  };
-
-  const handleMouseLeave = () => {
-    // Add a small delay before closing to allow moving to dropdown
-    closeTimeoutRef.current = setTimeout(() => {
-      setOpenSection(null);
-    }, 150);
-  };
-
-  const handleDropdownEnter = () => {
-    // Clear any pending close timeout when entering dropdown
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  };
-
-  const handleDropdownLeave = () => {
-    // Close immediately when leaving dropdown area
-    setOpenSection(null);
-  };
+  // TODO: Replace with actual admin check from auth context
+  const isAdmin = false; // This should come from your auth context
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -113,59 +46,43 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-white dark:bg-gray-800 shadow dark:shadow-none z-50 relative" style={{ zIndex: 100 }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-center relative">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link to="/" className="font-bold text-lg text-indigo-700 dark:text-indigo-300 mr-8 hover:underline focus:outline-none">Employable Agents</Link>
+        <div className="flex h-16 items-center relative">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link to="/" className="font-bold text-lg text-indigo-700 dark:text-indigo-300 hover:underline focus:outline-none">
+              Employable Agents
+            </Link>
+          </div>
 
-              <div className="hidden md:block">
-                <div className="ml-10 flex items-baseline space-x-4">
-                  {navSections.map((section, idx) => (
-                    <div
-                      key={section.label}
-                      className="relative"
-                      ref={el => { navRefs.current[idx] = el; }}
-                      onMouseEnter={() => handleMouseEnter(section.label)}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      <button
-                        className="flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
-                        aria-haspopup="true"
-                        aria-expanded={openSection === section.label}
-                      >
-                        {section.label}
-                        <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      {openSection === section.label && navRefs.current[idx] && (
-                        <div
-                          className="fixed w-56 bg-white dark:bg-gray-800 rounded shadow-lg dark:shadow-none py-2 z-50 border border-gray-200 dark:border-gray-700"
-                          style={{
-                            top: (navRefs.current[idx]?.getBoundingClientRect().bottom || 0) + 4,
-                            left: (navRefs.current[idx]?.getBoundingClientRect().left || 0) + (navRefs.current[idx]?.offsetWidth || 0) / 2 - 112,
-                          }}
-                          onMouseEnter={handleDropdownEnter}
-                          onMouseLeave={handleDropdownLeave}
-                        >
-                          {section.links.map((link) => (
-                            <Link
-                              key={link.to}
-                              to={link.to}
-                              className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-indigo-700 rounded transition whitespace-nowrap"
-                              onClick={() => setOpenSection(null)}
-                            >
-                              {link.label}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* Centered Navigation */}
+          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
+            <div className="flex items-baseline space-x-6">
+              {/* Direct Navigation Links */}
+              {directLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Admin Panel
+                </Link>
+              )}
             </div>
+          </div>
+
+          {/* Theme Selector */}
+          <div className="flex-shrink-0 absolute right-0">
             <div className="relative">
               <button
-                className="ml-8 p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition focus:outline-none"
+                className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition focus:outline-none"
                 onClick={() => setThemeMenuOpen(!themeMenuOpen)}
                 type="button"
                 aria-label="Theme selector"

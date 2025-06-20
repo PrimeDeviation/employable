@@ -1,11 +1,13 @@
 {
   "mcpServers": {
     "employable-agents": {
-      "command": "node",
-      "args": ["/home/primed/localcode/employable/mcp-client-wrapper.js"],
-      "env": {
-        "MCP_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiIDogImVtcGxveWFibGUtbWNwIiwgInN1YiIgOiAiOTYxMGE4MTItYzMyZS00ZWUzLTkxMGMtMGVjODI1NDM2MGM5IiwgImF1ZCIgOiAibWNwLWNsaWVudCIsICJleHAiIDogMTc4MTk3MjY2NCwgImlhdCIgOiAxNzUwNDM2NjY0LCAidG9rZW5fdHlwZSIgOiAibWNwIiwgInVzZXJfaWQiIDogIjk2MTBhODEyLWMzMmUtNGVlMy05MTBjLTBlYzgyNTQzNjBjOSIsICJ0b2tlbl9pZCIgOiAiMzJiMmMwZjMtMTc0MS00MGRiLTljNDQtNzQ1NzVhY2QyMGUzIn0.L_D46YFkBoJd3X82P28jkavl0ZwsOD6FBaBFELkFPtg"
-      }
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "http://127.0.0.1:54321/functions/v1/mcp-server",
+        "-H", "Content-Type: application/json",
+        "-H", "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiIDogImVtcGxveWFibGUtbWNwIiwgInN1YiIgOiAiOTYxMGE4MTItYzMyZS00ZWUzLTkxMGMtMGVjODI1NDM2MGM5IiwgImF1ZCIgOiAibWNwLWNsaWVudCIsICJleHAiIDogMTc4MTk3MjY2NCwgImlhdCIgOiAxNzUwNDM2NjY0LCAidG9rZW5fdHlwZSIgOiAibWNwIiwgInVzZXJfaWQiIDogIjk2MTBhODEyLWMzMmUtNGVlMy05MTBjLTBlYzgyNTQzNjBjOSIsICJ0b2tlbl9pZCIgOiAiMzJiMmMwZjMtMTc0MS00MGRiLTljNDQtNzQ1NzVhY2QyMGUzIn0.L_D46YFkBoJd3X82P28jkavl0ZwsOD6FBaBFELkFPtg"
+      ]
     }
   }
 } 

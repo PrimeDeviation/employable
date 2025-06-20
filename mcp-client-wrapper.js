@@ -117,6 +117,226 @@ function handleMCPMessage(message) {
               },
               required: []
             }
+          },
+          {
+            name: 'createClientOffer',
+            description: 'Create a new client offer for hiring teams or AI agents',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Title of the project or offer'
+                },
+                description: {
+                  type: 'string',
+                  description: 'Detailed multiline description of what you need built'
+                },
+                objectives: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Array of clear project objectives'
+                },
+                required_skills: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Array of required technical skills'
+                },
+                budget_min: {
+                  type: 'number',
+                  description: 'Minimum budget (optional)'
+                },
+                budget_max: {
+                  type: 'number',
+                  description: 'Maximum budget (optional)'
+                },
+                budget_type: {
+                  type: 'string',
+                  description: 'Budget type: fixed, hourly, milestone, or negotiable'
+                }
+              },
+              required: ['title', 'description', 'objectives', 'required_skills']
+            }
+          },
+          {
+            name: 'createTeamOffer',
+            description: 'Create a new team offer advertising your services',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Title of your service offering'
+                },
+                description: {
+                  type: 'string',
+                  description: 'Detailed multiline description of services you provide'
+                },
+                services_offered: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Array of services you offer'
+                },
+                team_size: {
+                  type: 'number',
+                  description: 'Size of your team (optional)'
+                },
+                experience_level: {
+                  type: 'string',
+                  description: 'Experience level: junior, mid, senior, or expert'
+                }
+              },
+              required: ['title', 'description', 'services_offered']
+            }
+          },
+          {
+            name: 'browseOffers',
+            description: 'Browse available offers in the marketplace',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                offer_type: {
+                  type: 'string',
+                  description: 'Filter by offer type: client_offer, team_offer, or all'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of offers to return (default 10)'
+                }
+              },
+              required: []
+            }
+          },
+          {
+            name: 'bidOnOffer',
+            description: 'Submit a bid on an available offer',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                offer_id: {
+                  type: 'number',
+                  description: 'ID of the offer to bid on'
+                },
+                proposal: {
+                  type: 'string',
+                  description: 'Detailed proposal explaining your approach'
+                },
+                proposed_budget: {
+                  type: 'number',
+                  description: 'Your proposed budget (optional)'
+                },
+                proposed_timeline: {
+                  type: 'string',
+                  description: 'Your proposed timeline (optional)'
+                },
+                why_choose_us: {
+                  type: 'string',
+                  description: 'Why you are the best choice for this project'
+                }
+              },
+              required: ['offer_id', 'proposal']
+            }
+          },
+          {
+            name: 'getOfferDetails',
+            description: 'Get detailed information about a specific offer including bids',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                offer_id: {
+                  type: 'number',
+                  description: 'ID of the offer to retrieve'
+                }
+              },
+              required: ['offer_id']
+            }
+          },
+          {
+            name: 'getOfferBids',
+            description: 'Get all bids for a specific offer (only for offer creators)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                offer_id: {
+                  type: 'number',
+                  description: 'ID of the offer to get bids for'
+                }
+              },
+              required: ['offer_id']
+            }
+          },
+          {
+            name: 'getContracts',
+            description: 'Get contracts for the authenticated user',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                status: {
+                  type: 'string',
+                  description: 'Filter by contract status (optional)'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of contracts to return (default 10)'
+                }
+              },
+              required: []
+            }
+          },
+          {
+            name: 'getContractDetails',
+            description: 'Get detailed information about a specific contract',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                contract_id: {
+                  type: 'number',
+                  description: 'ID of the contract to retrieve'
+                }
+              },
+              required: ['contract_id']
+            }
+          },
+          {
+            name: 'updateContractStatus',
+            description: 'Update the status of a contract (for authorized users)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                contract_id: {
+                  type: 'number',
+                  description: 'ID of the contract to update'
+                },
+                status: {
+                  type: 'string',
+                  description: 'New status for the contract'
+                }
+              },
+              required: ['contract_id', 'status']
+            }
+          },
+          {
+            name: 'browseResources',
+            description: 'Browse available resources (freelancers/teams) in the marketplace',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                skills: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Filter by required skills (optional)'
+                },
+                location: {
+                  type: 'string',
+                  description: 'Filter by location (optional)'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of resources to return (default 10)'
+                }
+              },
+              required: []
+            }
           }
         ]
       }
@@ -131,6 +351,26 @@ function handleMCPMessage(message) {
       callMCPServer('getMyProfile', {}, message.id, MCP_TOKEN);
     } else if (toolName === 'updateMyProfile') {
       callMCPServer('updateMyProfile', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'createClientOffer') {
+      callMCPServer('createClientOffer', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'createTeamOffer') {
+      callMCPServer('createTeamOffer', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'browseOffers') {
+      callMCPServer('browseOffers', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'bidOnOffer') {
+      callMCPServer('bidOnOffer', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'getOfferDetails') {
+      callMCPServer('getOfferDetails', message.params.arguments, message.id);
+    } else if (toolName === 'getOfferBids') {
+      callMCPServer('getOfferBids', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'getContracts') {
+      callMCPServer('getContracts', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'getContractDetails') {
+      callMCPServer('getContractDetails', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'updateContractStatus') {
+      callMCPServer('updateContractStatus', message.params.arguments, message.id, MCP_TOKEN);
+    } else if (toolName === 'browseResources') {
+      callMCPServer('browseResources', message.params.arguments, message.id);
     }
   }
 }
