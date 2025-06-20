@@ -35,7 +35,7 @@ drop policy if exists "Users can delete own MCP tokens." on public.mcp_tokens;
 create policy "Users can delete own MCP tokens." on public.mcp_tokens
   for delete using (auth.uid() = user_id);
 
--- Function to generate MCP token
+-- Function to generate simple hash-based MCP token
 create or replace function public.generate_mcp_token(
   p_name text,
   p_expires_days integer default 365
@@ -74,7 +74,7 @@ begin
 end;
 $$;
 
--- Function to validate MCP token
+-- Function to validate hash-based MCP token
 create or replace function public.validate_mcp_token(p_token text)
 returns uuid
 language plpgsql

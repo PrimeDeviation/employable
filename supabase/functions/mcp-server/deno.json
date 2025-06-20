@@ -3,6 +3,9 @@
   "compilerOptions": {
     "lib": ["deno.ns", "dom"]
   },
+  "functions": {
+    "verify_jwt": false
+  },
   "lint": {
     "files": {
       "include": ["./*.ts"]

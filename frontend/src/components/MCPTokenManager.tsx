@@ -112,9 +112,9 @@ const MCPTokenManager: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert('Token copied to clipboard!');
+  const handleCloseModal = () => {
+    setShowNewToken(false);
+    setNewToken(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -144,31 +144,90 @@ const MCPTokenManager: React.FC = () => {
 
       {/* New Token Dialog */}
       {showNewToken && newToken && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+        <div className="mt-4 p-6 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+          <div className="flex items-center mb-4">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+                <span className="text-green-600 dark:text-green-400 text-lg">✓</span>
+              </div>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-lg font-medium text-green-900 dark:text-green-100">
             Token Created Successfully!
-          </h4>
-          <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-            Copy this token now - it won't be shown again for security reasons.
-          </p>
-          <div className="bg-white dark:bg-gray-800 border rounded p-3 mb-3">
-            <code className="text-sm font-mono break-all text-gray-900 dark:text-gray-100">
-              {newToken.token}
-            </code>
+              </h3>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Store this token securely - you won't be able to see it again.
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => copyToClipboard(newToken.token)}
-              size="sm"
-              variant="outline"
-            >
-              Copy Token
-            </Button>
-            <Button
-              onClick={() => setShowNewToken(false)}
-              size="sm"
-            >
-              Done
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-green-900 dark:text-green-100 mb-2">
+                Your MCP Token:
+              </label>
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-green-200 dark:border-green-700 text-sm font-mono break-all text-gray-900 dark:text-gray-100">
+                {newToken.token}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
+                <span className="mr-2">🔧</span>
+                Setup Instructions for Cursor
+          </h4>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    Option 1 (Recommended): Environment Variable
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 mb-2">
+                    Set this in your terminal before starting Cursor:
+                  </p>
+                  <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
+                    export MCP_TOKEN="{newToken.token}"
+                  </code>
+                </div>
+
+                <div>
+                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    Option 2: Secure Token File
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 mb-2">
+                    Create a secure file in your home directory:
+          </p>
+                  <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
+                    echo "{newToken.token}" {"> ~/.employable-mcp-token"}<br/>
+                    chmod 600 ~/.employable-mcp-token
+                  </code>
+                </div>
+
+                <div>
+                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    MCP Server URL:
+                  </p>
+                  <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
+                    http://127.0.0.1:54321/functions/v1/mcp-server
+            </code>
+                </div>
+
+                <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                  <p className="text-yellow-800 dark:text-yellow-200 text-xs flex items-start">
+                    <span className="mr-2 mt-0.5">⚠️</span>
+                    <span>
+                      <strong>Security Notice:</strong> Keep this token secure. Don't share it or commit it to version control. 
+                      The token authenticates as your user account and provides access to your profile data.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button onClick={handleCloseModal} variant="secondary">
+              I've Saved My Token
             </Button>
           </div>
         </div>

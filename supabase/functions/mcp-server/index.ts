@@ -47,7 +47,7 @@ function handleWebSocket(socket: WebSocket) {
             
             user = userData.user;
           } else {
-            // Fall back to JWT token authentication
+            // Fall back to regular Supabase auth token
             const supabaseClient = createClient(
               Deno.env.get('SUPABASE_URL')!,
               Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -132,7 +132,7 @@ serve(async (req) => {
       services: [
         {
           name: 'getProfile',
-          description: 'Retrieves a user\'s Employable Agents profile, including their bio, skills, role, and location.',
+          description: 'Retrieves a user\'s public Employable Agents profile, if they have enabled MCP access.',
           parameters: {
             type: 'object',
             properties: {
@@ -144,6 +144,11 @@ serve(async (req) => {
             required: ['username'],
           },
         },
+        {
+          name: 'getMyProfile',
+          description: 'Retrieves the authenticated user\'s own full Employable Agents profile.',
+          parameters: {},
+        }
       ],
     };
     return new Response(JSON.stringify(responseBody), {
@@ -160,75 +165,73 @@ serve(async (req) => {
   if (req.method === 'POST' && (url.pathname === '/' || url.pathname === '/mcp-server')) {
     const { serviceName, parameters } = await req.json();
 
-    if (serviceName === 'getProfile') {
-      // For getProfile, we can optionally authenticate to get user's own profile
-      // If no username provided and user is authenticated, return their own profile
+    // --- Secure services that require authentication ---
+    if (serviceName === 'getMyProfile') {
       const authHeader = req.headers.get('Authorization');
       const token = authHeader?.replace('Bearer ', '');
-      
-      let targetUsername = parameters?.username;
-      let authenticatedUserId = null;
-      
-      // Try to authenticate if token provided
-      if (token) {
-        try {
-          if (token.startsWith('mcp_')) {
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'Authentication token required. Generate a token in your account settings.' }), { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+
+      try {
+        // Use our hash-based token validation
             const supabaseAdmin = createClient(
               Deno.env.get('SUPABASE_URL')!,
               Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
             );
-            
-            const { data: userId } = await supabaseAdmin.rpc('validate_mcp_token', {
-              p_token: token
-            });
-            
-            if (userId) {
-              authenticatedUserId = userId;
-              // If no username specified, get authenticated user's profile
-              if (!targetUsername) {
-                const { data: profileData } = await supabaseAdmin
-                  .from('profiles')
-                  .select('username')
-                  .eq('id', userId)
-                  .single();
-                targetUsername = profileData?.username;
-              }
-            }
-          }
-        } catch (authError) {
-          // Authentication failed, but we can still serve public profiles
-          console.log('Authentication failed, serving public profile only:', authError);
+        const { data: userId, error: rpcError } = await supabaseAdmin.rpc('validate_mcp_token', { p_token: token });
+        if (rpcError || !userId) throw new Error('Invalid or expired token.');
+
+        const { data, error } = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
+        if (error) throw error;
+        
+        const formattedProfile = `
+Your Employable Profile:
+Name: ${data.full_name || 'Not provided'}
+Email: ${data.username}
+Bio: ${data.bio || 'Not provided'}
+Website: ${data.website || 'Not provided'}
+Company: ${data.company_name || 'Not provided'}
+        `.trim();
+
+        return new Response(JSON.stringify({ content: formattedProfile }), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your token.' }), { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
         }
       }
       
+    if (serviceName === 'getProfile') {
+      const targetUsername = parameters?.username;
       if (!targetUsername) {
-        return new Response(JSON.stringify({ error: 'Username parameter is required.' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        return new Response(JSON.stringify({ error: 'Username is required to fetch a profile.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
       }
 
       try {
+        // Use the public anon key for this query
         const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
         
-        // Fetch profile and resource data
         const { data, error } = await supabase
           .from('profiles')
-          .select(`
-            username,
-            full_name,
-            bio,
-            website,
-            resource:resources(
-              role,
-              location,
-              skills
-            )
-          `)
+          .select('username, full_name, avatar_url, bio, website, company_name, ( select role, location, skills from resources where resources.profile_id = profiles.id )')
           .eq('username', targetUsername)
+          .eq('mcp_enabled', true) // <-- The important security check
           .single();
 
-        if (error) throw error;
+        if (error) {
+          // Do not throw error, which could leak user existence.
+          return new Response(JSON.stringify({ error: 'Profile not found or MCP access is disabled.' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        }
         
-        // Combine and format the data for the LLM
-        const resource = data.resource[0] || {};
+        // Format the data for the client
+        const resource = data.resources && data.resources.length > 0 ? data.resources[0] : {};
         const formattedProfile = `
           User Profile for ${data.full_name || data.username}:
           Bio: ${data.bio || 'Not provided.'}
@@ -243,7 +246,8 @@ serve(async (req) => {
         });
 
       } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        console.error('Error in getProfile:', error);
+        return new Response(JSON.stringify({ error: 'An internal error occurred.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       }
     }
 
@@ -277,12 +281,23 @@ serve(async (req) => {
             }
           }
         };
+        
         controller.enqueue(`data: ${JSON.stringify(serverInfo)}\n\n`);
+        
+        // Keep connection alive
+        const keepAlive = setInterval(() => {
+          controller.enqueue(`data: {"jsonrpc": "2.0", "method": "notifications/ping"}\n\n`);
+        }, 30000);
+        
+        // Cleanup on close
+        return () => {
+          clearInterval(keepAlive);
+        };
       }
     });
 
     return new Response(stream, { headers });
   }
 
-  return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  return new Response('Not Found', { status: 404 });
 }); 

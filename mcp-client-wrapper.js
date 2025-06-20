@@ -1,9 +1,31 @@
 #!/usr/bin/env node
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 // MCP stdio server for Cursor
 process.stdin.setEncoding('utf8');
+
+// Get the MCP token from environment variable (more secure)
+let MCP_TOKEN = process.env.MCP_TOKEN;
+
+// Fallback to secure token file (not in git)
+if (!MCP_TOKEN) {
+  const tokenPath = path.join(process.env.HOME || process.env.USERPROFILE, '.employable-mcp-token');
+  try {
+    if (fs.existsSync(tokenPath)) {
+      MCP_TOKEN = fs.readFileSync(tokenPath, 'utf8').trim();
+    }
+  } catch (e) {
+    console.error('Warning: Could not read token file');
+  }
+}
+
+if (!MCP_TOKEN) {
+  console.error('ERROR: MCP token not found. Set MCP_TOKEN environment variable or create ~/.employable-mcp-token file');
+  process.exit(1);
+}
 
 let buffer = '';
 
@@ -64,42 +86,49 @@ function handleMCPMessage(message) {
               },
               required: ['username']
             }
+          },
+          {
+            name: 'getMyProfile',
+            description: 'Get your own Employable profile (requires authentication token)',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
           }
         ]
       }
     };
     console.log(JSON.stringify(response));
-  } else if (message.method === 'tools/call' && message.params?.name === 'getProfile') {
-    // Call our MCP server
-    const username = message.params.arguments?.username;
-    if (!username) {
-      const errorResponse = {
-        jsonrpc: '2.0',
-        id: message.id,
-        error: {
-          code: -32602,
-          message: 'Username parameter is required'
-        }
-      };
-      console.log(JSON.stringify(errorResponse));
-      return;
+  } else if (message.method === 'tools/call') {
+    const toolName = message.params?.name;
+    
+    if (toolName === 'getProfile') {
+      callMCPServer('getProfile', message.params.arguments, message.id);
+    } else if (toolName === 'getMyProfile') {
+      callMCPServer('getMyProfile', {}, message.id, MCP_TOKEN);
     }
+  }
+}
 
-    // Make HTTP request to our MCP server
+function callMCPServer(serviceName, parameters, messageId, token = null) {
     const postData = JSON.stringify({
-      serviceName: 'getProfile',
-      parameters: { username }
+    serviceName,
+    parameters: parameters || {}
     });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(postData),
+    'Authorization': `Bearer ${token || MCP_TOKEN}`
+  };
 
     const options = {
       hostname: '127.0.0.1',
       port: 54321,
       path: '/functions/v1/mcp-server',
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
+    headers
     };
 
     const req = http.request(options, (res) => {
@@ -112,7 +141,7 @@ function handleMCPMessage(message) {
           const result = JSON.parse(data);
           const response = {
             jsonrpc: '2.0',
-            id: message.id,
+          id: messageId,
             result: {
               content: [
                 {
@@ -126,7 +155,7 @@ function handleMCPMessage(message) {
         } catch (e) {
           const errorResponse = {
             jsonrpc: '2.0',
-            id: message.id,
+          id: messageId,
             error: {
               code: -32603,
               message: 'Failed to parse server response'
@@ -140,7 +169,7 @@ function handleMCPMessage(message) {
     req.on('error', (e) => {
       const errorResponse = {
         jsonrpc: '2.0',
-        id: message.id,
+      id: messageId,
         error: {
           code: -32603,
           message: `HTTP request failed: ${e.message}`
@@ -151,7 +180,6 @@ function handleMCPMessage(message) {
 
     req.write(postData);
     req.end();
-  }
 }
 
 process.on('SIGINT', () => {
