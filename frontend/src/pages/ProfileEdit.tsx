@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext'; // Assuming you have an AuthContext to get the user
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import MCPTokenManager from '../components/MCPTokenManager';
 
 const ProfileEdit: React.FC = () => {
   const { user } = useAuth();
@@ -530,6 +531,11 @@ const ProfileEdit: React.FC = () => {
           </Button>
         </div>
       </form>
+
+      {/* MCP Token Management Section */}
+      <div className="mt-8 bg-white dark:bg-gray-900 shadow rounded-lg p-6">
+        <MCPTokenManager />
+      </div>
     </div>
   );
 };

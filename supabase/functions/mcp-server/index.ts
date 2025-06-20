@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from "https://deno.land/std@0.168.0/uuid/mod.ts";
 
 const MCP_PROTOCOL_VERSION = '1.0';
 
@@ -22,16 +22,48 @@ function handleWebSocket(socket: WebSocket) {
         }
 
         try {
-          const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_ANON_KEY')!,
-            { global: { headers: { Authorization: `Bearer ${token}` } } }
-          );
+          let user = null;
+          
+          // Try MCP token authentication first
+          if (token.startsWith('mcp_')) {
+            const supabaseClient = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+            );
+            
+            const { data: userId, error: tokenError } = await supabaseClient.rpc('validate_mcp_token', {
+              p_token: token
+            });
+            
+            if (tokenError || !userId) {
+              throw new Error("Invalid MCP token");
+            }
+            
+            // Get user data from auth.users
+            const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
+            if (userError || !userData.user) {
+              throw new Error("User not found");
+            }
+            
+            user = userData.user;
+          } else {
+            // Fall back to JWT token authentication
+            const supabaseClient = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_ANON_KEY')!,
+              { global: { headers: { Authorization: `Bearer ${token}` } } }
+            );
 
-          const { data: { user }, error } = await supabaseClient.auth.getUser();
+            const { data: authData, error } = await supabaseClient.auth.getUser();
+            if (error || !authData.user) {
+              throw new Error(error?.message || "Invalid authentication token");
+            }
+            
+            user = authData.user;
+          }
 
-          if (error || !user) {
-            throw new Error(error?.message || "Invalid authentication token");
+          if (!user) {
+            throw new Error("Authentication failed");
           }
 
           console.log(`Agent authenticated as user: ${user.id}`);
@@ -39,7 +71,7 @@ function handleWebSocket(socket: WebSocket) {
           
           socket.send(JSON.stringify({
             protocol_version: MCP_PROTOCOL_VERSION,
-            message_id: uuidv4.generate(),
+            message_id: uuidv4(),
             timestamp: new Date().toISOString(),
             source_agent_id: 'mcp-server',
             performative: 'CONTEXT_EVENT',
@@ -77,6 +109,9 @@ function handleWebSocket(socket: WebSocket) {
 }
 
 serve(async (req) => {
+  const url = new URL(req.url);
+  console.log(`Incoming request: ${req.method} ${url.pathname}`);
+  
   // Handle WebSocket upgrade requests
   if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
     const { socket, response } = Deno.upgradeWebSocket(req);
@@ -90,8 +125,8 @@ serve(async (req) => {
   }
 
   // --- MCP Protocol Discovery ---
-  // On GET /, return the list of services
-  if (req.method === 'GET' && new URL(req.url).pathname === '/') {
+  // On GET / or /mcp-server, return the list of services
+  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/mcp-server')) {
     const responseBody = {
       mcp_protocol_version: MCP_PROTOCOL_VERSION,
       services: [
@@ -121,13 +156,52 @@ serve(async (req) => {
   }
 
   // --- MCP Service Execution ---
-  // On POST /, execute the requested service
-  if (req.method === 'POST' && new URL(req.url).pathname === '/') {
+  // On POST / or /mcp-server, execute the requested service
+  if (req.method === 'POST' && (url.pathname === '/' || url.pathname === '/mcp-server')) {
     const { serviceName, parameters } = await req.json();
 
     if (serviceName === 'getProfile') {
-      const { username } = parameters;
-      if (!username) {
+      // For getProfile, we can optionally authenticate to get user's own profile
+      // If no username provided and user is authenticated, return their own profile
+      const authHeader = req.headers.get('Authorization');
+      const token = authHeader?.replace('Bearer ', '');
+      
+      let targetUsername = parameters?.username;
+      let authenticatedUserId = null;
+      
+      // Try to authenticate if token provided
+      if (token) {
+        try {
+          if (token.startsWith('mcp_')) {
+            const supabaseAdmin = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+            );
+            
+            const { data: userId } = await supabaseAdmin.rpc('validate_mcp_token', {
+              p_token: token
+            });
+            
+            if (userId) {
+              authenticatedUserId = userId;
+              // If no username specified, get authenticated user's profile
+              if (!targetUsername) {
+                const { data: profileData } = await supabaseAdmin
+                  .from('profiles')
+                  .select('username')
+                  .eq('id', userId)
+                  .single();
+                targetUsername = profileData?.username;
+              }
+            }
+          }
+        } catch (authError) {
+          // Authentication failed, but we can still serve public profiles
+          console.log('Authentication failed, serving public profile only:', authError);
+        }
+      }
+      
+      if (!targetUsername) {
         return new Response(JSON.stringify({ error: 'Username parameter is required.' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
       }
 
@@ -148,7 +222,7 @@ serve(async (req) => {
               skills
             )
           `)
-          .eq('username', username)
+          .eq('username', targetUsername)
           .single();
 
         if (error) throw error;
@@ -174,6 +248,40 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ error: 'Service not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  }
+
+  // --- SSE Endpoint for Cursor MCP ---
+  if (req.method === 'GET' && url.pathname === '/sse') {
+    const headers = new Headers({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    const stream = new ReadableStream({
+      start(controller) {
+        // Send initial server info
+        const serverInfo = {
+          jsonrpc: '2.0',
+          method: 'notifications/initialized',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {
+              tools: {}
+            },
+            serverInfo: {
+              name: 'employable-profiles',
+              version: '1.0.0'
+            }
+          }
+        };
+        controller.enqueue(`data: ${JSON.stringify(serverInfo)}\n\n`);
+      }
+    });
+
+    return new Response(stream, { headers });
   }
 
   return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
