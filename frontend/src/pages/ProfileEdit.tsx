@@ -3,8 +3,6 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext'; // Assuming you have an AuthContext to get the user
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import MCPTokenManager from '../components/MCPTokenManager';
-import { Checkbox } from '../components/ui/checkbox';
 
 const ProfileEdit: React.FC = () => {
   const { user } = useAuth();
@@ -119,7 +117,6 @@ const ProfileEdit: React.FC = () => {
     const profileUpdates = {
       id: user.id,
       ...profile,
-      mcp_enabled: profile.mcp_enabled || false,
       updated_at: new Date(),
     };
     const { error: profileError } = await supabase.from('profiles').upsert(profileUpdates);
@@ -527,40 +524,12 @@ const ProfileEdit: React.FC = () => {
           </Button>
         </div>
 
-        {/* MCP Opt-in */}
-        <div className="mt-6 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <Checkbox
-                id="mcp_enabled"
-                checked={profile.mcp_enabled || false}
-                onCheckedChange={(checked: boolean) => setProfile((prev: any) => ({ ...prev, mcp_enabled: checked }))}
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="mcp_enabled" className="font-medium text-gray-700 dark:text-gray-300">Enable MCP Access</label>
-              <p className="text-gray-500 dark:text-gray-400">Allow external AI agents to access your public profile information via the Model Context Protocol (MCP). This will enable features like automated team building and resource discovery.</p>
-            </div>
-          </div>
-        </div>
-
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </form>
-
-      {/* MCP Token Management Section - Conditionally Rendered */}
-      {profile.mcp_enabled && (
-      <div className="mt-8 bg-white dark:bg-gray-900 shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">MCP Token Management</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Generate and manage secure tokens for your MCP clients. These tokens act like API keys and should be kept secret.
-          </p>
-        <MCPTokenManager />
-      </div>
-      )}
     </div>
   );
 };

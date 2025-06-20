@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import MCPTokenManager from '../components/MCPTokenManager';
 
 const Account: React.FC = () => {
   const { user, session, loading: authLoading } = useAuth();
@@ -20,10 +19,10 @@ const Account: React.FC = () => {
       if (!authLoading && user) {
         setLoading(true);
         
-        // Get profile data - include mcp_enabled
+        // Get profile data
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select(`username, website, avatar_url, company_name, bio, hourly_rate, availability, full_name, mcp_enabled`)
+          .select(`username, website, avatar_url, company_name, bio, hourly_rate, availability, full_name`)
           .eq('id', user.id)
           .single();
         
@@ -57,27 +56,6 @@ const Account: React.FC = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/login');
-  };
-
-  const handleMCPToggle = async (checked: boolean) => {
-    if (!user || !profile) return;
-    
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ mcp_enabled: checked })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      setProfile((prev: any) => ({ ...prev, mcp_enabled: checked }));
-    } catch (error) {
-      console.error('Error updating MCP setting:', error);
-      alert('Failed to update MCP setting');
-    } finally {
-      setSaving(false);
-    }
   };
 
   return (
@@ -183,43 +161,6 @@ const Account: React.FC = () => {
               </div>
             </div>
           )}
-
-          {/* MCP Integration Section */}
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4 mt-6">
-            <h3 className="text-lg font-semibold">MCP Integration</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Enable Model Context Protocol (MCP) access to allow AI agents to interact with your profile and team data.
-            </p>
-            
-            <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                id="mcp_enabled"
-                checked={profile.mcp_enabled || false}
-                onChange={(e) => handleMCPToggle(e.target.checked)}
-                disabled={saving}
-                className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <div className="flex-1">
-                <label htmlFor="mcp_enabled" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                  Enable MCP Access
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Allow external AI agents to access your public profile information and team data through secure tokens.
-                </p>
-              </div>
-            </div>
-
-            {profile.mcp_enabled && (
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h4 className="text-md font-semibold mb-3">MCP Token Management</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Generate secure tokens for your MCP clients. These tokens act like API keys and should be kept secret.
-                </p>
-                <MCPTokenManager />
-              </div>
-            )}
-          </div>
         </>
       ) : (
         <div className="text-center py-10 bg-white dark:bg-gray-800 shadow rounded-lg">
