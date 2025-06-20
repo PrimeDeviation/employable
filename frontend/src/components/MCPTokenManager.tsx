@@ -55,7 +55,7 @@ const MCPTokenManager: React.FC = () => {
 
     try {
       setCreating(true);
-      const { data, error } = await supabase.rpc('generate_mcp_token', {
+      const { data, error } = await supabase.rpc('generate_mcp_jwt_token', {
         p_name: newTokenName.trim(),
         p_expires_days: 365
       });

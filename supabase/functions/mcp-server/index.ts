@@ -123,19 +123,34 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
     return null;
   }
 
-  // Strategy 1: Custom MCP API Key (legacy)
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  // Strategy 1: Custom JWT MCP Token (preferred for MCP clients)
+  // Try JWT validation first for tokens that look like JWTs (have dots)
+  if (token.includes('.')) {
+    try {
+      const { data: userId, error } = await supabaseAdmin.rpc('validate_mcp_jwt_token', { p_token: token });
+      if (!error && userId) {
+        // JWT tokens get full access for now, but we could extract scopes from the JWT payload
+        return { userId, scopes: ['*'] };
+      }
+    } catch (error) {
+      console.log('Custom JWT validation failed, trying other methods:', error);
+    }
+  }
+
+  // Strategy 2: Legacy MCP API Key (hash-based)
   if (token.startsWith('mcp_')) {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
     const { data: userId, error } = await supabaseAdmin.rpc('validate_mcp_token', { p_token: token });
     if (error || !userId) return null;
     // API keys get full access for now.
     return { userId, scopes: ['*'] };
   }
 
-  // Strategy 2: Standard Supabase JWT for logged-in users
+  // Strategy 3: Standard Supabase JWT for logged-in users
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -200,6 +215,27 @@ serve(async (req) => {
           name: 'getMyProfile',
           description: 'Retrieves the authenticated user\'s own full Employable Agents profile.',
           parameters: {},
+        },
+        {
+          name: 'updateMyProfile',
+          description: 'Updates the authenticated user\'s own Employable Agents profile.',
+          parameters: {
+            type: 'object',
+            properties: {
+              bio: {
+                type: 'string',
+                description: 'Professional bio',
+              },
+              company_name: {
+                type: 'string',
+                description: 'Company name',
+              },
+              website: {
+                type: 'string',
+                description: 'Website URL',
+              },
+            },
+          },
         }
       ],
     };
@@ -259,6 +295,66 @@ Company: ${data.company_name || 'Not provided'}
         // This error now means the profile couldn't be fetched, not that auth failed.
         return new Response(JSON.stringify({ error: 'Could not retrieve profile.' }), { 
           status: 404, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'updateMyProfile') {
+      const authResult = await authenticateRequest(req);
+
+      if (!authResult) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your token.' }), { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+
+      if (!hasPermission(authResult, 'profile:read')) {
+        return new Response(JSON.stringify({ error: 'Your token does not have permission to perform this action.' }), { 
+          status: 403, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+
+      try {
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        // Extract update fields from parameters
+        const updateData: any = {};
+        if (parameters?.bio !== undefined) updateData.bio = parameters.bio;
+        if (parameters?.company_name !== undefined) updateData.company_name = parameters.company_name;
+        if (parameters?.website !== undefined) updateData.website = parameters.website;
+
+        if (Object.keys(updateData).length === 0) {
+          return new Response(JSON.stringify({ error: 'No valid fields provided for update.' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        // Update the profile
+        const { data, error } = await supabaseAdmin
+          .from('profiles')
+          .update(updateData)
+          .eq('id', authResult.userId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        const successMessage = `Profile updated successfully! Updated fields: ${Object.keys(updateData).join(', ')}`;
+        
+        return new Response(JSON.stringify({ content: successMessage }), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        return new Response(JSON.stringify({ error: 'Could not update profile.' }), { 
+          status: 500, 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       }

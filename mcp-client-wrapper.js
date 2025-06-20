@@ -95,6 +95,28 @@ function handleMCPMessage(message) {
               properties: {},
               required: []
             }
+          },
+          {
+            name: 'updateMyProfile',
+            description: 'Update your own Employable profile (requires authentication token)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                bio: {
+                  type: 'string',
+                  description: 'Your professional bio'
+                },
+                company_name: {
+                  type: 'string',
+                  description: 'Your company name'
+                },
+                website: {
+                  type: 'string',
+                  description: 'Your website URL'
+                }
+              },
+              required: []
+            }
           }
         ]
       }
@@ -107,6 +129,8 @@ function handleMCPMessage(message) {
       callMCPServer('getProfile', message.params.arguments, message.id);
     } else if (toolName === 'getMyProfile') {
       callMCPServer('getMyProfile', {}, message.id, MCP_TOKEN);
+    } else if (toolName === 'updateMyProfile') {
+      callMCPServer('updateMyProfile', message.params.arguments, message.id, MCP_TOKEN);
     }
   }
 }
