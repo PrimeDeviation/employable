@@ -75,7 +75,7 @@ const MCPTokenManager: React.FC = () => {
   };
 
   const revokeToken = async (tokenId: string) => {
-    if (!confirm('Are you sure you want to revoke this token? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to revoke this token? This action cannot be undone.')) {
       return;
     }
 
@@ -94,7 +94,7 @@ const MCPTokenManager: React.FC = () => {
   };
 
   const deleteToken = async (tokenId: string) => {
-    if (!confirm('Are you sure you want to delete this token? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this token? This action cannot be undone.')) {
       return;
     }
 
