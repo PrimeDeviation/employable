@@ -108,6 +108,58 @@ function handleWebSocket(socket: WebSocket) {
   };
 }
 
+// --- Unified Authentication and Authorization ---
+
+interface AuthResult {
+  userId: string;
+  scopes: string[];
+}
+
+async function authenticateRequest(req: Request): Promise<AuthResult | null> {
+  const authHeader = req.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return null;
+  }
+
+  // Strategy 1: Custom MCP API Key (legacy)
+  if (token.startsWith('mcp_')) {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    const { data: userId, error } = await supabaseAdmin.rpc('validate_mcp_token', { p_token: token });
+    if (error || !userId) return null;
+    // API keys get full access for now.
+    return { userId, scopes: ['*'] };
+  }
+
+  // Strategy 2: Standard Supabase JWT for logged-in users
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return null;
+    // Standard users get basic read access.
+    return { userId: user.id, scopes: ['profile:read'] };
+  } catch (e) {
+    // This will catch invalid JWTs
+    return null;
+  }
+}
+
+function hasPermission(authResult: AuthResult, requiredScope: string): boolean {
+  if (!authResult) return false;
+  // The '*' scope grants all permissions
+  if (authResult.scopes.includes('*')) return true;
+  // Check for the specific required scope
+  return authResult.scopes.includes(requiredScope);
+}
+
 serve(async (req) => {
   const url = new URL(req.url);
   console.log(`Incoming request: ${req.method} ${url.pathname}`);
@@ -167,25 +219,28 @@ serve(async (req) => {
 
     // --- Secure services that require authentication ---
     if (serviceName === 'getMyProfile') {
-      const authHeader = req.headers.get('Authorization');
-      const token = authHeader?.replace('Bearer ', '');
-      if (!token) {
-        return new Response(JSON.stringify({ error: 'Authentication token required. Generate a token in your account settings.' }), { 
+      const authResult = await authenticateRequest(req);
+
+      if (!authResult) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your token.' }), { 
           status: 401, 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       }
 
-      try {
-        // Use our hash-based token validation
-            const supabaseAdmin = createClient(
-              Deno.env.get('SUPABASE_URL')!,
-              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-            );
-        const { data: userId, error: rpcError } = await supabaseAdmin.rpc('validate_mcp_token', { p_token: token });
-        if (rpcError || !userId) throw new Error('Invalid or expired token.');
+      if (!hasPermission(authResult, 'profile:read')) {
+        return new Response(JSON.stringify({ error: 'Your token does not have permission to perform this action.' }), { 
+          status: 403, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
 
-        const { data, error } = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
+      try {
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        const { data, error } = await supabaseAdmin.from('profiles').select('*').eq('id', authResult.userId).single();
         if (error) throw error;
         
         const formattedProfile = `
@@ -201,12 +256,13 @@ Company: ${data.company_name || 'Not provided'}
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your token.' }), { 
-          status: 401, 
+        // This error now means the profile couldn't be fetched, not that auth failed.
+        return new Response(JSON.stringify({ error: 'Could not retrieve profile.' }), { 
+          status: 404, 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
-        }
       }
+    }
       
     if (serviceName === 'getProfile') {
       const targetUsername = parameters?.username;
