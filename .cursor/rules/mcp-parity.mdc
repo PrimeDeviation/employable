@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+MCP Feature Parity: For each feature implemented, we need to create a corresponding Model Context Protocol interface when appropriate to maintain our MCP first policy. 

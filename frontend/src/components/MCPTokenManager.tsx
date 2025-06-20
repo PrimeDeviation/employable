@@ -175,7 +175,7 @@ const MCPTokenManager: React.FC = () => {
               <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
                 <span className="mr-2">🔧</span>
                 Setup Instructions for Cursor
-          </h4>
+              </h4>
               
               <div className="space-y-3 text-sm">
                 <div>
@@ -196,7 +196,7 @@ const MCPTokenManager: React.FC = () => {
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 mb-2">
                     Create a secure file in your home directory:
-          </p>
+                  </p>
                   <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
                     echo "{newToken.token}" {"> ~/.employable-mcp-token"}<br/>
                     chmod 600 ~/.employable-mcp-token
@@ -209,7 +209,7 @@ const MCPTokenManager: React.FC = () => {
                   </p>
                   <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
                     http://127.0.0.1:54321/functions/v1/mcp-server
-            </code>
+                  </code>
                 </div>
 
                 <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">

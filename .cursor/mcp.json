@@ -1,8 +1,11 @@
 {
   "mcpServers": {
-    "employable-profiles": {
+    "employable-agents": {
       "command": "node",
-      "args": ["mcp-client-wrapper.js"]
+      "args": ["mcp-client-wrapper.js"],
+      "env": {
+        "MCP_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiIDogImVtcGxveWFibGUtbWNwIiwgInN1YiIgOiAiNTU2MThlMTYtYTdmMy00ZjlkLWEyZjgtMjdmMzY3MzYzOGQzIiwgImF1ZCIgOiAibWNwLWNsaWVudCIsICJleHAiIDogMTc4MTkzMTQ3OSwgImlhdCIgOiAxNzUwMzk1NDc5LCAidG9rZW5fdHlwZSIgOiAibWNwIiwgInVzZXJfaWQiIDogIjU1NjE4ZTE2LWE3ZjMtNGY5ZC1hMmY4LTI3ZjM2NzM2MzhkMyJ9.2KKr5fFu8ZJyRndmsdDPugt6COlk660TG-1bc8VqcH8"
+      }
     }
   }
 } 
