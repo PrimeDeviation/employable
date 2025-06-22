@@ -75,6 +75,20 @@ const AVAILABLE_TOOLS = [
     }
   },
   {
+    name: 'getOfferDetail',
+    description: 'Get detailed information about a specific offer including bids',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        offer_id: {
+          type: 'number',
+          description: 'The ID of the offer to get details for (obtained from browseOffers)'
+        }
+      },
+      required: ['offer_id']
+    }
+  },
+  {
     name: 'createOffer',
     description: 'Create a new offer in the marketplace (requires authentication)',
     inputSchema: {
@@ -687,6 +701,251 @@ ${index + 1}. ${offer.title}
         console.error('Error in browseOffers:', error);
         
         const errorMessage = 'An error occurred while browsing offers.';
+        
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'getOfferDetail') {
+      try {
+        const offerId = parameters?.offer_id;
+        if (!offerId) {
+          return new Response(JSON.stringify({ error: 'Offer ID is required.' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        // Use the public anon key for this query
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+        
+        // Fetch offer details with related data
+        const { data: offerData, error: offerError } = await supabase
+          .from('offers')
+          .select(`
+            id,
+            title,
+            description,
+            offer_type,
+            status,
+            visibility,
+            budget_min,
+            budget_max,
+            budget_type,
+            location_preference,
+            created_at,
+            created_by,
+            client_offers (
+              objectives,
+              required_skills,
+              success_criteria,
+              deliverables,
+              preferred_skills,
+              project_type,
+              technical_requirements,
+              timeline,
+              start_date,
+              deadline,
+              estimated_duration,
+              team_size_preference,
+              experience_level,
+              communication_style,
+              project_management_style
+            ),
+            team_offers (
+              services_offered,
+              team_size,
+              experience_level,
+              hourly_rate_min,
+              hourly_rate_max,
+              availability,
+              portfolio_items,
+              certifications,
+              specializations
+            )
+          `)
+          .eq('id', offerId)
+          .eq('status', 'active')
+          .eq('visibility', 'public')
+          .single();
+
+        if (offerError || !offerData) {
+          return new Response(JSON.stringify({ error: 'Offer not found or not available.' }), { 
+            status: 404, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        // Fetch bids for this offer
+        const { data: bidsData, error: bidsError } = await supabase
+          .from('bids')
+          .select('*')
+          .eq('offer_id', offerId)
+          .order('created_at', { ascending: false });
+
+        if (bidsError) {
+          console.error('Failed to fetch bids:', bidsError);
+        }
+
+        const bids = bidsData || [];
+
+        // Format budget display
+        const formatBudget = () => {
+          if (offerData.budget_min && offerData.budget_max) {
+            return `$${offerData.budget_min.toLocaleString()} - $${offerData.budget_max.toLocaleString()}`;
+          } else if (offerData.budget_min) {
+            return `From $${offerData.budget_min.toLocaleString()}`;
+          } else if (offerData.budget_max) {
+            return `Up to $${offerData.budget_max.toLocaleString()}`;
+          }
+          return 'Budget not specified';
+        };
+
+        // Build detailed offer information
+        let offerDetails = `
+📋 OFFER DETAILS
+
+Title: ${offerData.title}
+Type: ${offerData.offer_type === 'client_offer' ? 'Client Looking for Team' : 'Team Offering Services'}
+Budget: ${formatBudget()} (${offerData.budget_type || 'negotiable'})
+Posted: ${new Date(offerData.created_at).toLocaleDateString()}
+Status: ${offerData.status}
+Offer ID: ${offerData.id}
+
+Description:
+${offerData.description}
+        `.trim();
+
+        // Add offer-type specific details
+        if (offerData.offer_type === 'client_offer' && offerData.client_offers && offerData.client_offers.length > 0) {
+          const clientOffer = offerData.client_offers[0];
+          offerDetails += `\n\n🎯 PROJECT REQUIREMENTS\n`;
+          
+          if (clientOffer.objectives && clientOffer.objectives.length > 0) {
+            offerDetails += `\nObjectives:\n${clientOffer.objectives.map(obj => `• ${obj}`).join('\n')}`;
+          }
+          
+          if (clientOffer.required_skills && clientOffer.required_skills.length > 0) {
+            offerDetails += `\n\nRequired Skills:\n${clientOffer.required_skills.map(skill => `• ${skill}`).join('\n')}`;
+          }
+
+          if (clientOffer.deliverables && clientOffer.deliverables.length > 0) {
+            offerDetails += `\n\nDeliverables:\n${clientOffer.deliverables.map(del => `• ${del}`).join('\n')}`;
+          }
+
+          if (clientOffer.timeline) {
+            offerDetails += `\n\nTimeline: ${clientOffer.timeline}`;
+          }
+
+          if (clientOffer.team_size_preference) {
+            offerDetails += `\nPreferred Team Size: ${clientOffer.team_size_preference}`;
+          }
+
+          if (clientOffer.experience_level) {
+            offerDetails += `\nRequired Experience Level: ${clientOffer.experience_level}`;
+          }
+        }
+
+        if (offerData.offer_type === 'team_offer' && offerData.team_offers && offerData.team_offers.length > 0) {
+          const teamOffer = offerData.team_offers[0];
+          offerDetails += `\n\n👥 TEAM INFORMATION\n`;
+          
+          if (teamOffer.services_offered && teamOffer.services_offered.length > 0) {
+            offerDetails += `\nServices Offered:\n${teamOffer.services_offered.map(service => `• ${service}`).join('\n')}`;
+          }
+          
+          if (teamOffer.team_size) {
+            offerDetails += `\n\nTeam Size: ${teamOffer.team_size}`;
+          }
+
+          if (teamOffer.experience_level) {
+            offerDetails += `\nExperience Level: ${teamOffer.experience_level}`;
+          }
+
+          if (teamOffer.hourly_rate_min || teamOffer.hourly_rate_max) {
+            const rateRange = teamOffer.hourly_rate_min && teamOffer.hourly_rate_max 
+              ? `$${teamOffer.hourly_rate_min} - $${teamOffer.hourly_rate_max}/hr`
+              : teamOffer.hourly_rate_min 
+              ? `From $${teamOffer.hourly_rate_min}/hr`
+              : `Up to $${teamOffer.hourly_rate_max}/hr`;
+            offerDetails += `\nHourly Rate: ${rateRange}`;
+          }
+
+          if (teamOffer.availability) {
+            offerDetails += `\nAvailability: ${teamOffer.availability}`;
+          }
+
+          if (teamOffer.specializations && teamOffer.specializations.length > 0) {
+            offerDetails += `\n\nSpecializations:\n${teamOffer.specializations.map(spec => `• ${spec}`).join('\n')}`;
+          }
+        }
+
+        if (offerData.location_preference) {
+          offerDetails += `\n\n📍 Location Preference: ${offerData.location_preference}`;
+        }
+
+        // Add bids section
+        offerDetails += `\n\n💼 BIDS (${bids.length} total)\n`;
+        
+        if (bids.length === 0) {
+          offerDetails += `\nNo bids have been submitted yet.`;
+        } else {
+          bids.slice(0, 5).forEach((bid, index) => {
+            offerDetails += `\n${index + 1}. Bid #${bid.id}`;
+            if (bid.proposed_budget) {
+              offerDetails += ` - $${bid.proposed_budget.toLocaleString()}`;
+            }
+            offerDetails += `\n   Submitted: ${new Date(bid.created_at).toLocaleDateString()}`;
+            offerDetails += `\n   Status: ${bid.status}`;
+            if (bid.proposal) {
+              const shortProposal = bid.proposal.length > 100 ? bid.proposal.substring(0, 100) + '...' : bid.proposal;
+              offerDetails += `\n   Proposal: ${shortProposal}`;
+            }
+            if (bid.proposed_timeline) {
+              offerDetails += `\n   Timeline: ${bid.proposed_timeline}`;
+            }
+            offerDetails += '\n';
+          });
+
+          if (bids.length > 5) {
+            offerDetails += `\n... and ${bids.length - 5} more bids`;
+          }
+        }
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: offerDetails }]
+              }
+            }
+          : { content: offerDetails };
+
+        return new Response(JSON.stringify(responseData), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+
+      } catch (error) {
+        console.error('Error in getOfferDetail:', error);
+        
+        const errorMessage = 'An error occurred while fetching offer details.';
         
         // Format response based on request type
         const responseData = isJsonRpc 
