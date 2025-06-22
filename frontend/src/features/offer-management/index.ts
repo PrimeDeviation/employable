@@ -2,6 +2,9 @@
 export { OfferCreationPage } from './pages/OfferCreationPage';
 export { OfferBrowsePage } from './pages/OfferBrowsePage';
 export { OfferDetailPage } from './pages/OfferDetailPage';
+
+export { BidModal } from './components/BidModal';
+
 export { useOffers } from './hooks/useOffers';
 export { useCreateOffer } from './hooks/useCreateOffer';
 export { useBids } from './hooks/useBids'; 

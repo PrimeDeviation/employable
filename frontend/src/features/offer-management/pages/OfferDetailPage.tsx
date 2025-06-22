@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
+import { BidModal } from '../components/BidModal';
 
 interface Offer {
   id: number;
@@ -35,6 +36,7 @@ export function OfferDetailPage() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBidModalOpen, setIsBidModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -90,6 +92,26 @@ export function OfferDetailPage() {
       return `Up to $${offer.budget_max.toLocaleString()}`;
     }
     return 'Budget not specified';
+  };
+
+  const refreshBids = async () => {
+    if (!id) return;
+    
+    try {
+      const { data: bidsData, error: bidsError } = await supabase
+        .from('bids')
+        .select('*')
+        .eq('offer_id', parseInt(id))
+        .order('created_at', { ascending: false });
+
+      if (bidsError) {
+        console.error('Failed to fetch bids:', bidsError);
+      } else {
+        setBids(bidsData || []);
+      }
+    } catch (err) {
+      console.error('Error refreshing bids:', err);
+    }
   };
 
   if (isLoading) {
@@ -195,7 +217,10 @@ export function OfferDetailPage() {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Bids ({bids.length})
             </h2>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={() => setIsBidModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
               Submit New Bid
             </button>
           </div>
@@ -207,7 +232,10 @@ export function OfferDetailPage() {
             <p className="text-gray-600 mb-4">
               Be the first to submit a bid on this offer!
             </p>
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button 
+              onClick={() => setIsBidModalOpen(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               Submit First Bid
             </button>
           </div>
@@ -269,6 +297,16 @@ export function OfferDetailPage() {
         )}
         </div>
       </div>
+
+      {/* Bid Modal */}
+      {offer && (
+        <BidModal
+          isOpen={isBidModalOpen}
+          onClose={() => setIsBidModalOpen(false)}
+          offer={offer}
+          onBidSubmitted={refreshBids}
+        />
+      )}
     </div>
   );
 } 
