@@ -24,6 +24,12 @@ export function useCreateOffer() {
     setError(null);
 
     try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('You must be logged in to create an offer');
+      }
+
       // Create structured description using the same template logic as MCP server
       let structuredDescription = data.description;
 
@@ -56,6 +62,7 @@ Experience Level: ${data.experience_level || 'Mid-level'}`;
           title: data.title,
           description: structuredDescription,
           offer_type: data.offer_type,
+          created_by: user.id,
           budget_min: data.budget_min || null,
           budget_max: data.budget_max || null,
           budget_type: data.budget_type || 'negotiable'
@@ -63,10 +70,14 @@ Experience Level: ${data.experience_level || 'Mid-level'}`;
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       return offer;
     } catch (err) {
+      console.error('Create offer error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to create offer';
       setError(errorMessage);
       throw err;

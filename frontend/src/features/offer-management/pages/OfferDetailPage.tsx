@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
 import { BidModal } from '../components/BidModal';
+import { BidResponseModal } from '../components/BidResponseModal';
 
 interface Offer {
   id: number;
@@ -37,6 +38,25 @@ export function OfferDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [bidResponseModal, setBidResponseModal] = useState<{
+    isOpen: boolean;
+    bid: Bid | null;
+    action: 'accept' | 'decline';
+  }>({
+    isOpen: false,
+    bid: null,
+    action: 'accept'
+  });
+
+  useEffect(() => {
+    // Get current user
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -113,6 +133,41 @@ export function OfferDetailPage() {
       console.error('Error refreshing bids:', err);
     }
   };
+
+  const handleAcceptBid = (bid: Bid) => {
+    setBidResponseModal({
+      isOpen: true,
+      bid,
+      action: 'accept'
+    });
+  };
+
+  const handleDeclineBid = (bid: Bid) => {
+    setBidResponseModal({
+      isOpen: true,
+      bid,
+      action: 'decline'
+    });
+  };
+
+  const closeBidResponseModal = () => {
+    setBidResponseModal({
+      isOpen: false,
+      bid: null,
+      action: 'accept'
+    });
+  };
+
+  const isOfferCreator = () => {
+    return currentUser && offer && currentUser.id === offer.created_by;
+  };
+
+  // Filter bids to only show ones the user is involved in
+  const visibleBids = bids.filter(bid => {
+    if (!currentUser) return false;
+    // Show bid if user is the offer creator or the bidder
+    return currentUser.id === offer?.created_by || currentUser.id === bid.bidder_id;
+  });
 
   if (isLoading) {
     return (
@@ -215,48 +270,50 @@ export function OfferDetailPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Bids ({bids.length})
+              {isOfferCreator() ? `Bids (${visibleBids.length})` : 'Your Bids'}
             </h2>
-            <button 
-              onClick={() => setIsBidModalOpen(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Submit New Bid
-            </button>
           </div>
 
-        {bids.length === 0 ? (
+        {visibleBids.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-gray-400 text-4xl mb-4">💼</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No bids yet</h3>
-            <p className="text-gray-600 mb-4">
-              Be the first to submit a bid on this offer!
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No bids yet</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {isOfferCreator() ? 'No bids have been submitted yet.' : 'Be the first to submit a bid on this offer!'}
             </p>
-            <button 
-              onClick={() => setIsBidModalOpen(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Submit First Bid
-            </button>
+            {!isOfferCreator() && (
+              <button 
+                onClick={() => setIsBidModalOpen(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Submit First Bid
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
-            {bids.map((bid) => (
-              <div key={bid.id} className="border border-gray-200 rounded-lg p-6">
+            {visibleBids.map((bid) => (
+              <div key={bid.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-6 dark:bg-gray-700">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h4 className="font-semibold text-gray-900">Bid #{bid.id}</h4>
-                    <p className="text-sm text-gray-500">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">Bid #{bid.id}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Submitted {new Date(bid.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right">
                     {bid.proposed_budget && (
-                      <p className="text-lg font-semibold text-gray-900">
+                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         ${bid.proposed_budget.toLocaleString()}
                       </p>
                     )}
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      bid.status === 'accepted' 
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : bid.status === 'rejected'
+                        ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                    }`}>
                       {bid.status}
                     </span>
                   </div>
@@ -264,35 +321,57 @@ export function OfferDetailPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <h5 className="font-medium text-gray-900 mb-2">Proposal</h5>
-                    <p className="text-gray-700">{bid.proposal}</p>
+                    <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Proposal</h5>
+                    <p className="text-gray-700 dark:text-gray-300">{bid.proposal}</p>
                   </div>
 
                   {bid.proposed_timeline && (
                     <div>
-                      <h5 className="font-medium text-gray-900 mb-2">Proposed Timeline</h5>
-                      <p className="text-gray-700">{bid.proposed_timeline}</p>
+                      <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Proposed Timeline</h5>
+                      <p className="text-gray-700 dark:text-gray-300">{bid.proposed_timeline}</p>
                     </div>
                   )}
 
                   {bid.why_choose_us && (
                     <div>
-                      <h5 className="font-medium text-gray-900 mb-2">Why Choose Us</h5>
-                      <p className="text-gray-700">{bid.why_choose_us}</p>
+                      <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Why Choose Us</h5>
+                      <p className="text-gray-700 dark:text-gray-300">{bid.why_choose_us}</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-end space-x-3 mt-4 pt-4 border-t border-gray-200">
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <div className="flex justify-end space-x-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <button className="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500">
                     View Profile
                   </button>
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Accept Bid
-                  </button>
+                  {isOfferCreator() && currentUser?.id !== bid.bidder_id && (
+                    <>
+                      <button 
+                        onClick={() => handleDeclineBid(bid)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Reject
+                      </button>
+                      <button 
+                        onClick={() => handleAcceptBid(bid)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      >
+                        Accept
+                      </button>
+                    </>
+                  )}
+                  {currentUser?.id === bid.bidder_id && !isOfferCreator() && (
+                    <button 
+                      onClick={() => setIsBidModalOpen(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Submit New Bid
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
+
           </div>
         )}
         </div>
@@ -305,6 +384,17 @@ export function OfferDetailPage() {
           onClose={() => setIsBidModalOpen(false)}
           offer={offer}
           onBidSubmitted={refreshBids}
+        />
+      )}
+
+      {/* Bid Response Modal */}
+      {bidResponseModal.bid && (
+        <BidResponseModal
+          isOpen={bidResponseModal.isOpen}
+          onClose={closeBidResponseModal}
+          bid={bidResponseModal.bid}
+          action={bidResponseModal.action}
+          onBidUpdated={refreshBids}
         />
       )}
     </div>

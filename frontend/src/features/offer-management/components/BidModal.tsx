@@ -13,9 +13,10 @@ interface BidModalProps {
     budget_type?: string;
   };
   onBidSubmitted: () => void;
+  isCounterBid?: boolean;
 }
 
-export function BidModal({ isOpen, onClose, offer, onBidSubmitted }: BidModalProps) {
+export function BidModal({ isOpen, onClose, offer, onBidSubmitted, isCounterBid = false }: BidModalProps) {
   const { createBid, isLoading, error } = useBids();
   const [formData, setFormData] = useState({
     proposal: '',
@@ -36,6 +37,7 @@ export function BidModal({ isOpen, onClose, offer, onBidSubmitted }: BidModalPro
         proposed_budget: formData.proposed_budget ? parseFloat(formData.proposed_budget) : undefined,
         proposed_timeline: formData.proposed_timeline || undefined,
         why_choose_us: formData.why_choose_us || undefined,
+        is_counter_bid: isCounterBid,
       });
 
       // Reset form and close modal
@@ -52,6 +54,7 @@ export function BidModal({ isOpen, onClose, offer, onBidSubmitted }: BidModalPro
       onClose();
     } catch (err) {
       console.error('Failed to submit bid:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
     }
   };
 
@@ -67,7 +70,7 @@ export function BidModal({ isOpen, onClose, offer, onBidSubmitted }: BidModalPro
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Submit Bid
+              {isCounterBid ? 'Submit Counter Bid' : 'Submit Bid'}
             </h2>
             <button
               onClick={onClose}
@@ -82,7 +85,7 @@ export function BidModal({ isOpen, onClose, offer, onBidSubmitted }: BidModalPro
           {/* Offer Summary */}
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Bidding on: {offer.title}
+              {isCounterBid ? 'Counter bidding on:' : 'Bidding on:'} {offer.title}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Type: {offer.offer_type === 'client_offer' ? 'Client Project' : 'Team Service'}

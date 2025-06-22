@@ -74,10 +74,10 @@ export function OfferCreationPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-8">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Offer</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create New Offer</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Manual control panel for testing MCP offer creation functionality
           </p>
         </div>
@@ -85,11 +85,11 @@ export function OfferCreationPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Offer Type Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Offer Type
             </label>
             <div className="flex space-x-4">
-              <label className="flex items-center">
+              <label className="flex items-center text-gray-700 dark:text-gray-300">
                 <input
                   type="radio"
                   value="client_offer"
@@ -99,7 +99,7 @@ export function OfferCreationPage() {
                 />
                 Client Offer (Looking for Team)
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-gray-700 dark:text-gray-300">
                 <input
                   type="radio"
                   value="team_offer"
@@ -114,7 +114,7 @@ export function OfferCreationPage() {
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Title *
             </label>
             <input
@@ -122,14 +122,14 @@ export function OfferCreationPage() {
               required
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="Enter offer title"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Description *
             </label>
             <textarea
@@ -137,7 +137,7 @@ export function OfferCreationPage() {
               rows={4}
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
               placeholder="Detailed description of your offer"
             />
           </div>
@@ -147,7 +147,7 @@ export function OfferCreationPage() {
             <>
               {/* Objectives */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Project Objectives *
                 </label>
                 {formData.objectives.map((objective, index) => (
@@ -156,7 +156,7 @@ export function OfferCreationPage() {
                       type="text"
                       value={objective}
                       onChange={(e) => updateArrayItem('objectives', index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                       placeholder="Enter objective"
                     />
                     <button
@@ -179,7 +179,7 @@ export function OfferCreationPage() {
 
               {/* Required Skills */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Required Skills *
                 </label>
                 {formData.required_skills.map((skill, index) => (
@@ -188,7 +188,7 @@ export function OfferCreationPage() {
                       type="text"
                       value={skill}
                       onChange={(e) => updateArrayItem('required_skills', index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                       placeholder="Enter required skill"
                     />
                     <button
@@ -212,37 +212,37 @@ export function OfferCreationPage() {
               {/* Budget */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Budget Min
                   </label>
                   <input
                     type="number"
                     value={formData.budget_min || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, budget_min: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                     placeholder="Minimum budget"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Budget Max
                   </label>
                   <input
                     type="number"
                     value={formData.budget_max || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, budget_max: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                     placeholder="Maximum budget"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Budget Type
                   </label>
                   <select
                     value={formData.budget_type}
                     onChange={(e) => setFormData(prev => ({ ...prev, budget_type: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                   >
                     <option value="fixed">Fixed</option>
                     <option value="hourly">Hourly</option>
@@ -259,7 +259,7 @@ export function OfferCreationPage() {
             <>
               {/* Services Offered */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Services Offered *
                 </label>
                 {formData.services_offered.map((service, index) => (
@@ -268,7 +268,7 @@ export function OfferCreationPage() {
                       type="text"
                       value={service}
                       onChange={(e) => updateArrayItem('services_offered', index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                       placeholder="Enter service"
                     />
                     <button
@@ -292,25 +292,25 @@ export function OfferCreationPage() {
               {/* Team Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Team Size
                   </label>
                   <input
                     type="number"
                     value={formData.team_size || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, team_size: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                     placeholder="Number of team members"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Experience Level
                   </label>
                   <select
                     value={formData.experience_level || 'mid'}
                     onChange={(e) => setFormData(prev => ({ ...prev, experience_level: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                   >
                     <option value="junior">Junior</option>
                     <option value="mid">Mid-level</option>
@@ -327,7 +327,7 @@ export function OfferCreationPage() {
             <button
               type="button"
               onClick={() => navigate('/offers')}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>

@@ -4,6 +4,7 @@ export { OfferBrowsePage } from './pages/OfferBrowsePage';
 export { OfferDetailPage } from './pages/OfferDetailPage';
 
 export { BidModal } from './components/BidModal';
+export { BidResponseModal } from './components/BidResponseModal';
 
 export { useOffers } from './hooks/useOffers';
 export { useCreateOffer } from './hooks/useCreateOffer';
