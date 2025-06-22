@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { useBids } from '../hooks/useBids';
 
 interface Offer {
   id: number;
@@ -36,7 +35,6 @@ export function OfferDetailPage() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { fetchBidsForOffer } = useBids();
 
   useEffect(() => {
     if (!id) return;
@@ -59,9 +57,19 @@ export function OfferDetailPage() {
 
         setOffer(offerData);
 
-        // Fetch bids for this offer
-        const bidsData = await fetchBidsForOffer(parseInt(id));
-        setBids(bidsData);
+        // Fetch bids for this offer directly
+        const { data: bidsData, error: bidsError } = await supabase
+          .from('bids')
+          .select('*')
+          .eq('offer_id', parseInt(id))
+          .order('created_at', { ascending: false });
+
+        if (bidsError) {
+          console.error('Failed to fetch bids:', bidsError);
+          setBids([]);
+        } else {
+          setBids(bidsData || []);
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch offer';
         setError(errorMessage);
@@ -71,7 +79,7 @@ export function OfferDetailPage() {
     };
 
     fetchOfferAndBids();
-  }, [id, fetchBidsForOffer]);
+  }, [id]);
 
   const formatBudget = (offer: Offer) => {
     if (offer.budget_min && offer.budget_max) {
