@@ -12,7 +12,7 @@ Though it can be explored manually, Employable is meant to be interfaced from MC
 
 | Area                          | Status | Notes                                                        |
 | ----------------------------- | ------ | ------------------------------------------------------------ |
-| MCP profile & auth            | ✔      | `mcp-stdio-server.js` exposes basic `getProfile` tooling       |
+| MCP profile & auth            | ✔      | Supabase Edge Function exposes `getProfile`, `getMyProfile`, `updateMyProfile`, `browseOffers` |
 | Team & resource discovery     | ◑      | Road-mapped in `MCP_ROADMAP.md`                                |
 | Contract offer / bid flow     | ☐      | Upcoming: `contract.offer`, `contract.bid`, `contract.accept` messages |
 | React Frontend                | ✔      | Feature-sliced; lives in `frontend/`                           |
