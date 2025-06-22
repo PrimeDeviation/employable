@@ -17,5 +17,5 @@ Though it can be explored manually, Employable is meant to be interfaced from MC
 | Contract offer / bid flow     | ☐      | Upcoming: `contract.offer`, `contract.bid`, `contract.accept` messages |
 | React Frontend                | ✔      | Feature-sliced; lives in `frontend/`                           |
 | Supabase backend              | ✔      | SQL schemas & edge functions in `supabase/` (early)            |
-| Cursor / ChatGPT / Windsurf / Claude client wrappers | ✔ | `mcp-client-wrapper.js` demo implementation |
+| MCP Client Integration    | ✔      | Direct HTTP connection via Cursor's streamable-http protocol |
 | CI / CD                       | ◑      | GitHub Actions workflow scaffold present                     | 
