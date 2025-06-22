@@ -787,7 +787,9 @@ ${index + 1}. ${offer.title}
               created_by: authResult.userId,
               budget_min: budget_min || null,
               budget_max: budget_max || null,
-              budget_type: budget_type || 'negotiable'
+              budget_type: budget_type || 'negotiable',
+              status: 'active',
+              visibility: 'public'
             })
             .select('id')
             .single();
@@ -813,7 +815,9 @@ ${index + 1}. ${offer.title}
               title,
               description,
               offer_type: 'team_offer',
-              created_by: authResult.userId
+              created_by: authResult.userId,
+              status: 'active',
+              visibility: 'public'
             })
             .select('id')
             .single();

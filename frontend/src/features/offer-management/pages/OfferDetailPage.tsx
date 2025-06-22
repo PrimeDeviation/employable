@@ -51,6 +51,8 @@ export function OfferDetailPage() {
           .from('offers')
           .select('*')
           .eq('id', id)
+          .eq('status', 'active')
+          .eq('visibility', 'public')
           .single();
 
         if (offerError) throw offerError;
