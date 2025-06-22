@@ -78,7 +78,7 @@ export function OfferBrowsePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto mb-8">
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -96,61 +96,55 @@ export function OfferBrowsePage() {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-            <div className="flex flex-wrap gap-4 items-center mb-4">
-              <input
-                type="text"
-                placeholder="Search offers by title or description..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[280px]"
-              />
-              <select
-                value={locationFilter}
-                onChange={e => setLocationFilter(e.target.value)}
-                className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          <div className="flex flex-wrap gap-4 items-center justify-center mb-4">
+            <input
+              type="text"
+              placeholder="Search offers by title or description..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[280px]"
+            />
+            <select
+              value={locationFilter}
+              onChange={e => setLocationFilter(e.target.value)}
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">All Locations</option>
+              {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">All Statuses</option>
+              {statuses.map(status => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-4 items-center justify-center mb-6">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="created_at">Newest First</option>
+              <option value="title">Title</option>
+              <option value="budget-low">Budget (Low to High)</option>
+              <option value="budget-high">Budget (High to Low)</option>
+            </select>
+            {(locationFilter || statusFilter || search) && (
+              <button
+                onClick={() => { 
+                  setLocationFilter(''); 
+                  setStatusFilter(''); 
+                  setSearch(''); 
+                }}
+                className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
               >
-                <option value="">All Locations</option>
-                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-              </select>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">All Statuses</option>
-                {statuses.map(status => <option key={status} value={status}>{status}</option>)}
-              </select>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</label>
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value)}
-                  className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="created_at">Newest First</option>
-                  <option value="title">Title</option>
-                  <option value="budget-low">Budget (Low to High)</option>
-                  <option value="budget-high">Budget (High to Low)</option>
-                </select>
-              </div>
-
-              {(locationFilter || statusFilter || search) && (
-                <button
-                  onClick={() => { 
-                    setLocationFilter(''); 
-                    setStatusFilter(''); 
-                    setSearch(''); 
-                  }}
-                  className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
+                Clear Filters
+              </button>
+            )}
           </div>
 
           {/* Type Filter Buttons */}
@@ -187,93 +181,84 @@ export function OfferBrowsePage() {
             </button>
           </div>
         </div>
+      </div>
+      
+      {/* Results */}
+      {filteredOffers.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-gray-400 text-6xl mb-4">📋</div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No offers found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {search || locationFilter || statusFilter 
+              ? 'Try adjusting your search criteria or filters.'
+              : 'Be the first to create an offer in the marketplace!'
+            }
+          </p>
+          {!search && !locationFilter && !statusFilter && (
+            <Link
+              to="/offers/create"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+            >
+              Create First Offer
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-6xl mx-auto">
+          {filteredOffers.map((offer) => (
+            <Link 
+              to={`/offers/${offer.id}`} 
+              key={offer.id} 
+              className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col transition-colors hover:ring-2 hover:ring-blue-400 focus:outline-none"
+            >
+              <div className="mb-2">
+                <div className="flex justify-between items-start mb-1">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate pr-2 flex-1">{offer.title}</h2>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                      offer.offer_type === 'client_offer'
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
+                        : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                    }`}
+                  >
+                    {offer.offer_type === 'client_offer' ? 'Client Looking for Team' : 'Team Offering Services'}
+                  </span>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Posted {new Date(offer.created_at).toLocaleDateString()} • ID: {offer.id}
+                </p>
+              </div>
 
-        {/* Results */}
-        {filteredOffers.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">📋</div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No offers found</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {search || locationFilter || statusFilter 
-                ? 'Try adjusting your search criteria or filters.'
-                : 'Be the first to create an offer in the marketplace!'
-              }
-            </p>
-            {!search && !locationFilter && !statusFilter && (
-              <Link
-                to="/offers/create"
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-              >
-                Create First Offer
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {filteredOffers.map((offer) => (
-              <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl transition-shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{offer.title}</h3>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          offer.offer_type === 'client_offer'
-                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-                            : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        }`}
-                      >
-                        {offer.offer_type === 'client_offer' ? 'Client Looking for Team' : 'Team Offering Services'}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                      Posted {new Date(offer.created_at).toLocaleDateString()} • ID: {offer.id}
-                    </p>
+              {/* Truncated Description */}
+              <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 leading-relaxed">
+                {offer.description.length > 150 
+                  ? `${offer.description.substring(0, 150)}...` 
+                  : offer.description
+                }
+              </p>
+
+              <div className="mt-auto space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {offer.location_preference && `📍 ${offer.location_preference}`}
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {formatBudget(offer)}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {offer.budget_type || 'negotiable'}
-                    </p>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Status: {offer.status}
                   </div>
                 </div>
-
-                {/* Truncated Description */}
-                <div className="mb-4">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {offer.description.length > 150 
-                      ? `${offer.description.substring(0, 150)}...` 
-                      : offer.description
-                    }
-                  </p>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                    {offer.location_preference && (
-                      <span>📍 {offer.location_preference}</span>
-                    )}
-                    <span>Status: {offer.status}</span>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {formatBudget(offer)}
                   </div>
-                  <div className="flex space-x-3">
-                    <Link
-                      to={`/offers/${offer.id}`}
-                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    >
-                      View Details
-                    </Link>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                      Submit Bid
-                    </button>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {offer.budget_type || 'negotiable'}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 } 
