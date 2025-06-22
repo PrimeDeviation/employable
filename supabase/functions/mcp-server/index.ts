@@ -768,16 +768,28 @@ ${index + 1}. ${offer.title}
           }
         }
 
-        const supabaseAdmin = createClient(
+        // Use anon key with user auth context instead of service role
+        const supabase = createClient(
           Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          Deno.env.get('SUPABASE_ANON_KEY')!
         );
+
+        // Set the auth context for the authenticated user
+        const authHeader = req.headers.get('Authorization');
+        const token = authHeader?.substring(7); // Remove 'Bearer ' prefix
+        
+        if (token) {
+          await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: '' // Not needed for this operation
+          });
+        }
 
         let offerId: number;
 
         if (offer_type === 'client_offer') {
           // Use the database function for client offers
-          const { data, error } = await supabaseAdmin.rpc('create_client_offer', {
+          const { data, error } = await supabase.rpc('create_client_offer', {
             p_title: title,
             p_description: description,
             p_objectives: objectives,
@@ -791,7 +803,7 @@ ${index + 1}. ${offer.title}
           offerId = data;
         } else {
           // Use the database function for team offers
-          const { data, error } = await supabaseAdmin.rpc('create_team_offer', {
+          const { data, error } = await supabase.rpc('create_team_offer', {
             p_title: title,
             p_description: description,
             p_services_offered: services_offered,
