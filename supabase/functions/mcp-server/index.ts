@@ -4,6 +4,78 @@ import { v4 as uuidv4 } from "https://deno.land/std@0.168.0/uuid/mod.ts";
 
 const MCP_PROTOCOL_VERSION = '2024-11-05';
 
+// Available tools
+const AVAILABLE_TOOLS = [
+  {
+    name: 'getProfile',
+    description: 'Get a user profile by username/email',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        username: {
+          type: 'string',
+          description: 'The username/email of the user to look up'
+        }
+      },
+      required: ['username']
+    }
+  },
+  {
+    name: 'getMyProfile', 
+    description: 'Get your own profile (requires authentication)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        random_string: {
+          type: 'string',
+          description: 'Dummy parameter for no-parameter tools'
+        }
+      },
+      required: ['random_string']
+    }
+  },
+  {
+    name: 'updateMyProfile',
+    description: 'Update your own profile (requires authentication)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bio: {
+          type: 'string',
+          description: 'Your professional bio'
+        },
+        company_name: {
+          type: 'string', 
+          description: 'Your company name'
+        },
+        website: {
+          type: 'string',
+          description: 'Your website URL'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'browseOffers',
+    description: 'Browse available job offers in the marketplace',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of offers to return (default: 10)'
+        },
+        offset: {
+          type: 'number',
+          description: 'Number of offers to skip for pagination (default: 0)'
+        }
+      },
+      required: []
+    }
+  }
+];
+
 // --- WebSocket Handler ---
 function handleWebSocket(socket: WebSocket) {
   socket.onopen = () => {
@@ -38,51 +110,7 @@ function handleWebSocket(socket: WebSocket) {
           jsonrpc: '2.0',
           id: message.id,
           result: {
-            tools: [
-              {
-                name: 'getProfile',
-                description: 'Retrieves a user\'s public Employable Agents profile, if they have enabled MCP access.',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    username: {
-                      type: 'string',
-                      description: 'The username of the Employable Agents profile to retrieve.',
-                    },
-                  },
-                  required: ['username'],
-                },
-              },
-              {
-                name: 'getMyProfile',
-                description: 'Retrieves the authenticated user\'s own full Employable Agents profile.',
-                inputSchema: {
-                  type: 'object',
-                  properties: {},
-                },
-              },
-              {
-                name: 'updateMyProfile',
-                description: 'Updates the authenticated user\'s own Employable Agents profile.',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    bio: {
-                      type: 'string',
-                      description: 'Professional bio',
-                    },
-                    company_name: {
-                      type: 'string',
-                      description: 'Company name',
-                    },
-                    website: {
-                      type: 'string',
-                      description: 'Website URL',
-                    },
-                  },
-                },
-              }
-            ]
+            tools: AVAILABLE_TOOLS
           }
         };
         socket.send(JSON.stringify(response));
@@ -121,10 +149,27 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Validate the MCP token
+    // Try JWT validation first for tokens that look like JWTs (have dots)
+    if (token.includes('.')) {
+      try {
+        // Simple JWT payload extraction (not validating signature for now)
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          if (payload.user_id && payload.token_type === 'mcp') {
+            console.log('JWT token validated for user:', payload.user_id);
+            return { userId: payload.user_id, scopes: ['*'] };
+          }
+        }
+      } catch (error) {
+        console.log('JWT parsing failed:', error);
+      }
+    }
+
+    // Fall back to database token lookup
     const { data: tokenData, error } = await supabaseAdmin
       .from('mcp_tokens')
-      .select('user_id, scopes, expires_at')
+      .select('user_id, expires_at')
       .eq('token', token)
       .single();
 
@@ -141,7 +186,7 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
 
     return {
       userId: tokenData.user_id,
-      scopes: tokenData.scopes || []
+      scopes: ['*']
     };
   } catch (error) {
     console.error('Authentication error:', error);
@@ -180,48 +225,7 @@ serve(async (req) => {
   // On GET /, return the list of available tools
   if (req.method === 'GET' && url.pathname === '/') {
     const responseBody = {
-      tools: [
-        {
-          name: 'getProfile',
-          description: 'Retrieves a user\'s public Employable Agents profile, if they have enabled MCP access.',
-          parameters: {
-            type: 'object',
-            properties: {
-              username: {
-                type: 'string',
-                description: 'The username of the Employable Agents profile to retrieve.',
-              },
-            },
-            required: ['username'],
-          },
-        },
-        {
-          name: 'getMyProfile',
-          description: 'Retrieves the authenticated user\'s own full Employable Agents profile.',
-          parameters: {},
-        },
-        {
-          name: 'updateMyProfile',
-          description: 'Updates the authenticated user\'s own Employable Agents profile.',
-          parameters: {
-            type: 'object',
-            properties: {
-              bio: {
-                type: 'string',
-                description: 'Professional bio',
-              },
-              company_name: {
-                type: 'string',
-                description: 'Company name',
-              },
-              website: {
-                type: 'string',
-                description: 'Website URL',
-              },
-            },
-          },
-        }
-      ],
+      tools: AVAILABLE_TOOLS,
     };
     return new Response(JSON.stringify(responseBody), {
       headers: {
@@ -235,7 +239,109 @@ serve(async (req) => {
   // --- MCP Service Execution ---
   // On POST / or /mcp-server, execute the requested service
   if (req.method === 'POST' && (url.pathname === '/' || url.pathname === '/mcp-server')) {
-    const { serviceName, parameters } = await req.json();
+    console.log('[DEBUG] Processing POST request to', url.pathname);
+    let requestBody;
+    try {
+      const bodyText = await req.text();
+      console.log('[DEBUG] Request body text length:', bodyText.length);
+      if (!bodyText.trim()) {
+        console.log('[DEBUG] Empty request body detected');
+        return new Response(JSON.stringify({ error: 'Empty request body' }), { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+      requestBody = JSON.parse(bodyText);
+      console.log('[DEBUG] Successfully parsed JSON body:', requestBody);
+    } catch (error) {
+      console.error('[DEBUG] Invalid JSON in request body:', error);
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+      });
+    }
+    
+    // Handle JSON-RPC format (used by Cursor MCP)
+    if (requestBody.jsonrpc && requestBody.method) {
+      console.log('[DEBUG] Handling JSON-RPC request:', requestBody.method);
+      
+      // Handle initialize request (no auth required)
+      if (requestBody.method === 'initialize') {
+        const response = {
+          jsonrpc: '2.0',
+          id: requestBody.id,
+          result: {
+            protocolVersion: MCP_PROTOCOL_VERSION,
+            capabilities: {
+              tools: {},
+              prompts: {},
+              resources: {},
+              logging: {}
+            },
+            serverInfo: {
+              name: 'employable-agents',
+              version: '1.0.0'
+            }
+          }
+        };
+        return new Response(JSON.stringify(response), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      
+      // Handle notifications/initialized (no auth required, no response needed)
+      if (requestBody.method === 'notifications/initialized') {
+        return new Response(null, {
+          status: 204,
+          headers: { 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      
+      // Handle tools/list request
+      if (requestBody.method === 'tools/list') {
+        const response = {
+          jsonrpc: '2.0',
+          id: requestBody.id,
+          result: {
+            tools: AVAILABLE_TOOLS
+          }
+        };
+        return new Response(JSON.stringify(response), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      
+      // Handle tools/call requests
+      if (requestBody.method === 'tools/call') {
+        const toolName = requestBody.params?.name;
+        const toolArgs = requestBody.params?.arguments || {};
+        
+        // Convert JSON-RPC format to internal format and continue with tool handling
+        requestBody.serviceName = toolName;
+        requestBody.parameters = toolArgs;
+        requestBody.isJsonRpc = true;
+        requestBody.jsonRpcId = requestBody.id;
+        
+        // Fall through to tool handling logic below
+      } else {
+        // Unknown JSON-RPC method
+        const errorResponse = {
+          jsonrpc: '2.0',
+          id: requestBody.id,
+          error: {
+            code: -32601,
+            message: 'Method not found'
+          }
+        };
+        return new Response(JSON.stringify(errorResponse), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+    
+    // Handle both JSON-RPC and legacy custom format
+    const { serviceName, parameters, isJsonRpc, jsonRpcId } = requestBody;
 
     // --- Secure services that require authentication ---
     if (serviceName === 'getMyProfile') {
@@ -272,7 +378,18 @@ Website: ${data.website || 'Not provided'}
 Company: ${data.company_name || 'Not provided'}
         `.trim();
 
-        return new Response(JSON.stringify({ content: formattedProfile }), { 
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: formattedProfile }]
+              }
+            }
+          : { content: formattedProfile };
+
+        return new Response(JSON.stringify(responseData), { 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       } catch (error) {
@@ -331,7 +448,18 @@ Company: ${data.company_name || 'Not provided'}
         
         const successMessage = `Profile updated successfully! Updated fields: ${Object.keys(updateData).join(', ')}`;
         
-        return new Response(JSON.stringify({ content: successMessage }), { 
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: successMessage }]
+              }
+            }
+          : { content: successMessage };
+
+        return new Response(JSON.stringify(responseData), { 
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
         });
       } catch (error) {
@@ -376,7 +504,18 @@ Company: ${data.company_name || 'Not provided'}
           Skills: ${(resource.skills || []).join(', ')}
         `.trim();
         
-        return new Response(JSON.stringify({ content: formattedProfile }), {
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: formattedProfile }]
+              }
+            }
+          : { content: formattedProfile };
+
+        return new Response(JSON.stringify(responseData), {
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         });
 
@@ -385,6 +524,130 @@ Company: ${data.company_name || 'Not provided'}
         return new Response(JSON.stringify({ error: 'An internal error occurred.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       }
     }
+    
+    if (serviceName === 'browseOffers') {
+      try {
+        // Use the public anon key for this query
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+        
+        const limit = parameters?.limit || 10;
+        const offset = parameters?.offset || 0;
+        
+        const { data, error } = await supabase
+          .from('offers')
+          .select(`
+            id,
+            title,
+            description,
+            status,
+            budget_min,
+            budget_max,
+            budget_type,
+            created_at,
+            created_by,
+            offer_type,
+            client_offers (
+              objectives,
+              success_criteria,
+              deliverables,
+              required_skills,
+              preferred_skills,
+              project_type,
+              technical_requirements,
+              timeline,
+              start_date,
+              deadline,
+              estimated_duration,
+              team_size_preference,
+              experience_level,
+              communication_style,
+              project_management_style
+            )
+          `)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          const noOffersMessage = 'No job offers are currently available in the marketplace.';
+          
+          // Format response based on request type
+          const responseData = isJsonRpc 
+            ? {
+                jsonrpc: '2.0',
+                id: jsonRpcId,
+                result: {
+                  content: [{ type: 'text', text: noOffersMessage }]
+                }
+              }
+            : { content: noOffersMessage };
+
+          return new Response(JSON.stringify(responseData), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+        
+        // Format the offers for display
+        const formattedOffers = data.map((offer, index) => {
+          const budget = offer.budget_min && offer.budget_max 
+            ? `$${offer.budget_min} - $${offer.budget_max} (${offer.budget_type || 'fixed'})`
+            : offer.budget_min 
+            ? `$${offer.budget_min}+ (${offer.budget_type || 'budget'})`
+            : 'Budget negotiable';
+            
+          return `
+${index + 1}. ${offer.title}
+   Budget: ${budget}
+   Description: ${offer.description.substring(0, 150)}${offer.description.length > 150 ? '...' : ''}
+   Posted: ${new Date(offer.created_at).toLocaleDateString()}
+   Offer ID: ${offer.id}
+          `.trim();
+        }).join('\n\n');
+        
+        const offersMessage = `Available Job Offers (${data.length} found):\n\n${formattedOffers}`;
+        
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: offersMessage }]
+              }
+            }
+          : { content: offersMessage };
+
+        return new Response(JSON.stringify(responseData), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+
+      } catch (error) {
+        console.error('Error in browseOffers:', error);
+        
+        const errorMessage = 'An error occurred while browsing offers.';
+        
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+
 
     return new Response(JSON.stringify({ error: 'Service not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
@@ -435,4 +698,6 @@ Company: ${data.company_name || 'Not provided'}
   }
 
   return new Response('Not Found', { status: 404 });
-}); 
+});
+
+

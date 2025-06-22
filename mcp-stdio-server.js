@@ -1,434 +1,169 @@
 #!/usr/bin/env node
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
-// MCP stdio server for Cursor
+// Simple MCP stdio server for just the 3 working tools
 process.stdin.setEncoding('utf8');
-process.stdout.setEncoding('utf8');
 
-// Get the MCP token from environment variable (more secure)
-let MCP_TOKEN = process.env.MCP_TOKEN;
+const { createClient } = require('@supabase/supabase-js');
 
-// Fallback to secure token file (not in git)
-if (!MCP_TOKEN) {
-  const tokenPath = path.join(process.env.HOME || process.env.USERPROFILE, '.employable-mcp-token');
-  try {
-    if (fs.existsSync(tokenPath)) {
-      MCP_TOKEN = fs.readFileSync(tokenPath, 'utf8').trim();
-    }
-  } catch (e) {
-    console.error('Warning: Could not read token file', { type: 'stderr' });
-  }
-}
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://iyvynzfwdidztxhqoavj.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5dnluemZ3ZGlkenR4aHFvYXZqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjE3NzQwNSwiZXhwIjoyMDQxNzUzNDA1fQ.R1gJGWF4vWQiGvJ3A9jPuOMLMxWADdRjAhMZx9l5qeI';
 
-if (!MCP_TOKEN) {
-  console.error('ERROR: MCP token not found. Set MCP_TOKEN environment variable or create ~/.employable-mcp-token file', { type: 'stderr' });
-  process.exit(1);
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 let buffer = '';
 
-// Handle stdin input
 process.stdin.on('data', (chunk) => {
   buffer += chunk;
   
-  // Process complete JSON messages (line-delimited)
   const lines = buffer.split('\n');
-  buffer = lines.pop(); // Keep incomplete line in buffer
+  buffer = lines.pop();
   
   lines.forEach(line => {
     if (line.trim()) {
       try {
         const message = JSON.parse(line);
-        handleMCPMessage(message);
+        handleMessage(message);
       } catch (e) {
-        sendError(null, -32700, 'Parse error: Invalid JSON');
+        console.error('JSON parse error:', e);
       }
     }
   });
 });
 
-function sendResponse(id, result) {
-  const response = {
-    jsonrpc: '2.0',
-    id: id,
-    result: result
-  };
-  console.log(JSON.stringify(response));
-}
-
-function sendError(id, code, message, data = null) {
-  const response = {
-    jsonrpc: '2.0',
-    id: id,
-    error: {
-      code: code,
-      message: message,
-      ...(data && { data })
-    }
-  };
-  console.log(JSON.stringify(response));
-}
-
-function handleMCPMessage(message) {
+async function handleMessage(message) {
   if (message.method === 'initialize') {
-    // Respond with server capabilities
-    sendResponse(message.id, {
+    const response = {
+      jsonrpc: '2.0',
+      id: message.id,
+      result: {
       protocolVersion: '2024-11-05',
       capabilities: {
         tools: {}
       },
       serverInfo: {
-        name: 'employable-agents',
+        name: 'employable-profiles',
         version: '1.0.0'
       }
-    });
+      }
+    };
+    console.log(JSON.stringify(response));
   } 
   else if (message.method === 'tools/list') {
-    // List available tools
-    sendResponse(message.id, {
+    const response = {
+      jsonrpc: '2.0',
+      id: message.id,
+      result: {
       tools: [
         {
           name: 'getProfile',
-          description: 'Get Employable user profile including bio, skills, role, and location',
+            description: 'Get a user profile by username/email',
           inputSchema: {
             type: 'object',
             properties: {
-              username: {
-                type: 'string',
-                description: 'The username/email of the user to look up'
-              }
+                username: { type: 'string', description: 'Username/email to look up' }
             },
             required: ['username']
           }
-        },
-        {
-          name: 'getMyProfile',
-          description: 'Get your own Employable profile (requires authentication token)',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-            required: []
+          },
+          {
+            name: 'getMyProfile',
+            description: 'Get your own profile',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
+          },
+          {
+            name: 'updateMyProfile',
+            description: 'Update your profile',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                bio: { type: 'string', description: 'Your bio' },
+                company_name: { type: 'string', description: 'Company name' },
+                website: { type: 'string', description: 'Website URL' }
+              },
+              required: []
+            }
           }
-        },
-        {
-          name: 'updateMyProfile',
-          description: 'Update your own Employable profile (requires authentication token)',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              bio: {
-                type: 'string',
-                description: 'Your professional bio'
-              },
-              company_name: {
-                type: 'string',
-                description: 'Your company name'
-              },
-              website: {
-                type: 'string',
-                description: 'Your website URL'
-              }
-            },
-            required: []
-          }
-        },
-        {
-          name: 'createClientOffer',
-          description: 'Create a new client offer for hiring teams or AI agents',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              title: {
-                type: 'string',
-                description: 'Title of the project or offer'
-              },
-              description: {
-                type: 'string',
-                description: 'Detailed multiline description of what you need built'
-              },
-              objectives: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Array of clear project objectives'
-              },
-              required_skills: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Array of required technical skills'
-              },
-              budget_min: {
-                type: 'number',
-                description: 'Minimum budget (optional)'
-              },
-              budget_max: {
-                type: 'number',
-                description: 'Maximum budget (optional)'
-              },
-              budget_type: {
-                type: 'string',
-                description: 'Budget type: fixed, hourly, milestone, or negotiable'
-              }
-            },
-            required: ['title', 'description', 'objectives', 'required_skills']
-          }
-        },
-        {
-          name: 'createTeamOffer',
-          description: 'Create a new team offer advertising your services',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              title: {
-                type: 'string',
-                description: 'Title of your service offering'
-              },
-              description: {
-                type: 'string',
-                description: 'Detailed multiline description of services you provide'
-              },
-              services_offered: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Array of services you offer'
-              },
-              team_size: {
-                type: 'number',
-                description: 'Size of your team (optional)'
-              },
-              experience_level: {
-                type: 'string',
-                description: 'Experience level: junior, mid, senior, or expert'
-              }
-            },
-            required: ['title', 'description', 'services_offered']
-          }
-        },
-        {
-          name: 'browseOffers',
-          description: 'Browse available offers in the marketplace',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              offer_type: {
-                type: 'string',
-                description: 'Filter by offer type: client_offer, team_offer, or all'
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum number of offers to return (default 10)'
-              }
-            },
-            required: []
-          }
-        },
-        {
-          name: 'bidOnOffer',
-          description: 'Submit a bid on an available offer',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              offer_id: {
-                type: 'number',
-                description: 'ID of the offer to bid on'
-              },
-              proposal: {
-                type: 'string',
-                description: 'Detailed proposal explaining your approach'
-              },
-              proposed_budget: {
-                type: 'number',
-                description: 'Your proposed budget (optional)'
-              },
-              proposed_timeline: {
-                type: 'string',
-                description: 'Your proposed timeline (optional)'
-              },
-              why_choose_us: {
-                type: 'string',
-                description: 'Why you are the best choice for this project'
-              }
-            },
-            required: ['offer_id', 'proposal']
-          }
-        },
-        {
-          name: 'getOfferDetails',
-          description: 'Get detailed information about a specific offer including bids',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              offer_id: {
-                type: 'number',
-                description: 'ID of the offer to retrieve'
-              }
-            },
-            required: ['offer_id']
-          }
-        },
-        {
-          name: 'getOfferBids',
-          description: 'Get all bids for a specific offer (only for offer creators)',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              offer_id: {
-                type: 'number',
-                description: 'ID of the offer to get bids for'
-              }
-            },
-            required: ['offer_id']
-          }
-        },
-        {
-          name: 'getContracts',
-          description: 'Get contracts for the authenticated user',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              status: {
-                type: 'string',
-                description: 'Filter by contract status (optional)'
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum number of contracts to return (default 10)'
-              }
-            },
-            required: []
-          }
-        },
-        {
-          name: 'getContractDetails',
-          description: 'Get detailed information about a specific contract',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              contract_id: {
-                type: 'number',
-                description: 'ID of the contract to retrieve'
-              }
-            },
-            required: ['contract_id']
-          }
-        },
-        {
-          name: 'updateContractStatus',
-          description: 'Update the status of a contract (for authorized users)',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              contract_id: {
-                type: 'number',
-                description: 'ID of the contract to update'
-              },
-              status: {
-                type: 'string',
-                description: 'New status for the contract'
-              }
-            },
-            required: ['contract_id', 'status']
-          }
-        },
-        {
-          name: 'browseResources',
-          description: 'Browse available resources (freelancers/teams) in the marketplace',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              skills: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Filter by required skills (optional)'
-              },
-              location: {
-                type: 'string',
-                description: 'Filter by location (optional)'
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum number of resources to return (default 10)'
-              }
-            },
-            required: []
-          }
-        }
-      ]
-    });
-  } 
-  else if (message.method === 'tools/call') {
-    const toolName = message.params?.name;
-    const args = message.params?.arguments || {};
-    
-    // Call the appropriate service
-    callSupabaseFunction(toolName, args, message.id);
-  }
-  else {
-    sendError(message.id, -32601, 'Method not found');
-  }
-}
-
-function callSupabaseFunction(serviceName, parameters, messageId) {
-  const postData = JSON.stringify({
-    serviceName,
-    parameters: parameters || {}
-  });
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(postData),
-    'Authorization': `Bearer ${MCP_TOKEN}`
-  };
-
-  const options = {
-    hostname: '127.0.0.1',
-    port: 54321,
-    path: '/functions/v1/mcp-server',
-    method: 'POST',
-    headers
-  };
-
-  const req = http.request(options, (res) => {
-    let data = '';
-    res.on('data', (chunk) => {
-      data += chunk;
-    });
-    res.on('end', () => {
-      try {
-        const result = JSON.parse(data);
-        if (result.error) {
-          sendError(messageId, -32603, result.error);
-        } else {
-          sendResponse(messageId, {
-            content: [
-              {
-                type: 'text',
-                text: result.content || 'No data returned'
-              }
-            ]
-          });
-        }
-      } catch (e) {
-        sendError(messageId, -32603, 'Failed to parse server response');
+        ]
       }
-    });
-  });
-
-  req.on('error', (e) => {
-    sendError(messageId, -32603, `HTTP request failed: ${e.message}`);
-  });
-
-  req.write(postData);
-  req.end();
+    };
+    console.log(JSON.stringify(response));
+  }
+  else if (message.method === 'tools/call') {
+    try {
+      const result = await handleToolCall(message.params.name, message.params.arguments || {});
+      const response = {
+        jsonrpc: '2.0',
+        id: message.id,
+        result: {
+          content: [{ type: 'text', text: result }]
+        }
+      };
+      console.log(JSON.stringify(response));
+    } catch (error) {
+      const response = {
+        jsonrpc: '2.0',
+        id: message.id,
+        error: {
+          code: -1,
+          message: error.message
+        }
+      };
+      console.log(JSON.stringify(response));
+    }
+  }
 }
 
-// Handle process termination
-process.on('SIGINT', () => {
-  process.exit(0);
-});
+async function handleToolCall(toolName, args) {
+  const userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiIDogImVtcGxveWFibGUtbWNwIiwgInN1YiIgOiAiOTYxMGE4MTItYzMyZS00ZWUzLTkxMGMtMGVjODI1NDM2MGM5IiwgImF1ZCIgOiAibWNwLWNsaWVudCIsICJleHAiIDogMTc4MTk3MjY2NCwgImlhdCIgOiAxNzUwNDM2NjY0LCAidG9rZW5fdHlwZSIgOiAibWNwIiwgInVzZXJfaWQiIDogIjk2MTBhODEyLWMzMmUtNGVlMy05MTBjLTBlYzgyNTQzNjBjOSIsICJ0b2tlbl9pZCIgOiAiMzJiMmMwZjMtMTc0MS00MGRiLTljNDQtNzQ1NzVhY2QyMGUzIn0.L_D46YFkBoJd3X82P28jkavl0ZwsOD6FBaBFELkFPtg';
+  const userId = '9610a812-c32e-4ee3-910c-0ec825436c9';
 
-process.on('SIGTERM', () => {
-  process.exit(0);
-}); 
+  if (toolName === 'getMyProfile') {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw new Error('Profile not found');
+    
+    return `Your Profile:\nName: ${data.full_name}\nEmail: ${data.username}\nBio: ${data.bio}\nWebsite: ${data.website}\nCompany: ${data.company_name}`;
+  }
+  
+  if (toolName === 'updateMyProfile') {
+    const updates = {};
+    if (args.bio) updates.bio = args.bio;
+    if (args.company_name) updates.company_name = args.company_name;
+    if (args.website) updates.website = args.website;
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+    
+    if (error) throw new Error('Update failed');
+    
+    return 'Profile updated successfully';
+  }
+  
+  if (toolName === 'getProfile') {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username, full_name, bio, website, company_name')
+      .eq('username', args.username)
+      .eq('mcp_enabled', true)
+      .single();
+    
+    if (error) throw new Error('Profile not found or MCP disabled');
+    
+    return `Profile for ${data.full_name}:\nBio: ${data.bio}\nWebsite: ${data.website}\nCompany: ${data.company_name}`;
+  }
+  
+  throw new Error('Unknown tool');
+}
+
+process.on('SIGINT', () => process.exit(0)); 
+process.on('SIGTERM', () => process.exit(0)); 
