@@ -768,51 +768,70 @@ ${index + 1}. ${offer.title}
           }
         }
 
-        // Use anon key with user auth context instead of service role
-        const supabase = createClient(
+        // Use service role for database operations and pass user ID explicitly
+        const supabaseAdmin = createClient(
           Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_ANON_KEY')!
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
-
-        // Set the auth context for the authenticated user
-        const authHeader = req.headers.get('Authorization');
-        const token = authHeader?.substring(7); // Remove 'Bearer ' prefix
-        
-        if (token) {
-          await supabase.auth.setSession({
-            access_token: token,
-            refresh_token: '' // Not needed for this operation
-          });
-        }
 
         let offerId: number;
 
         if (offer_type === 'client_offer') {
-          // Use the database function for client offers
-          const { data, error } = await supabase.rpc('create_client_offer', {
-            p_title: title,
-            p_description: description,
-            p_objectives: objectives,
-            p_required_skills: required_skills,
-            p_budget_min: budget_min || null,
-            p_budget_max: budget_max || null,
-            p_budget_type: budget_type || 'negotiable'
-          });
+          // Insert directly into the database tables with explicit user ID
+          const { data: offerData, error: offerError } = await supabaseAdmin
+            .from('offers')
+            .insert({
+              title,
+              description,
+              offer_type: 'client_offer',
+              created_by: authResult.userId,
+              budget_min: budget_min || null,
+              budget_max: budget_max || null,
+              budget_type: budget_type || 'negotiable'
+            })
+            .select('id')
+            .single();
 
-          if (error) throw error;
-          offerId = data;
+          if (offerError) throw offerError;
+          offerId = offerData.id;
+
+          // Insert client-specific details
+          const { error: clientError } = await supabaseAdmin
+            .from('client_offers')
+            .insert({
+              offer_id: offerId,
+              objectives,
+              required_skills
+            });
+
+          if (clientError) throw clientError;
         } else {
-          // Use the database function for team offers
-          const { data, error } = await supabase.rpc('create_team_offer', {
-            p_title: title,
-            p_description: description,
-            p_services_offered: services_offered,
-            p_team_size: team_size || null,
-            p_experience_level: experience_level || 'mid'
-          });
+          // Insert directly into the database tables for team offers
+          const { data: offerData, error: offerError } = await supabaseAdmin
+            .from('offers')
+            .insert({
+              title,
+              description,
+              offer_type: 'team_offer',
+              created_by: authResult.userId
+            })
+            .select('id')
+            .single();
 
-          if (error) throw error;
-          offerId = data;
+          if (offerError) throw offerError;
+          offerId = offerData.id;
+
+          // Insert team-specific details
+          const { error: teamError } = await supabaseAdmin
+            .from('team_offers')
+            .insert({
+              offer_id: offerId,
+              services_offered,
+              team_size: team_size || null,
+              experience_level: experience_level || 'mid'
+            });
+
+          if (teamError) throw teamError;
         }
 
         const successMessage = `✅ Offer created successfully!
