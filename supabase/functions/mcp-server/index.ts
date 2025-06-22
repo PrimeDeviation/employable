@@ -147,6 +147,61 @@ const AVAILABLE_TOOLS = [
       },
       required: ['title', 'description', 'offer_type']
     }
+  },
+  {
+    name: 'browseResources',
+    description: 'Browse available resources (consultants and teams) in the marketplace',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of resources to return (default: 10)',
+          default: 10
+        },
+        offset: {
+          type: 'number',
+          description: 'Number of resources to skip for pagination (default: 0)',
+          default: 0
+        },
+        role_filter: {
+          type: 'string',
+          description: 'Filter by role (optional)'
+        },
+        location_filter: {
+          type: 'string',
+          description: 'Filter by location (optional)'
+        },
+        skill_filter: {
+          type: 'string',
+          description: 'Filter by specific skill (optional)'
+        },
+        availability_filter: {
+          type: 'string',
+          enum: ['available', 'on-request', 'unavailable'],
+          description: 'Filter by availability status (optional)'
+        },
+        search: {
+          type: 'string',
+          description: 'Search by name, role, location, or skills (optional)'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'getResourceDetail',
+    description: 'Get detailed information about a specific resource including profile, skills, and work history',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        resource_id: {
+          type: 'number',
+          description: 'The ID of the resource to get details for (obtained from browseResources)'
+        }
+      },
+      required: ['resource_id']
+    }
   }
 ];
 
@@ -1040,6 +1095,286 @@ Your offer is now live in the marketplace and can be discovered by ${offer_type 
         const errorMessage = 'An error occurred while creating the offer. Please try again.';
         
         // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'browseResources') {
+      try {
+        const { limit = 10, offset = 0, role_filter, location_filter, skill_filter, availability_filter, search } = parameters || {};
+
+        // Use public anon key for this query (no auth required)
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+        
+        // Build query with filters
+        let query = supabase
+          .from('resources')
+          .select(`
+            id,
+            name,
+            role,
+            skills,
+            location,
+            profile_id,
+            profile:profiles (
+              full_name,
+              username,
+              hourly_rate,
+              availability,
+              bio
+            )
+          `)
+          .order('name', { ascending: true });
+
+        // Apply filters
+        if (role_filter) {
+          query = query.eq('role', role_filter);
+        }
+        if (location_filter) {
+          query = query.eq('location', location_filter);
+        }
+        if (skill_filter) {
+          query = query.contains('skills', [skill_filter]);
+        }
+        if (availability_filter) {
+          query = query.eq('profile.availability', availability_filter);
+        }
+        if (search) {
+          // For search, we'll need to use a more complex query
+          query = query.or(`name.ilike.%${search}%,role.ilike.%${search}%,location.ilike.%${search}%`);
+        }
+
+        // Apply pagination
+        query = query.range(offset, offset + limit - 1);
+
+        const { data: resources, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        // Format response
+        let resourcesList = `Available Resources (${resources?.length || 0} found):\n\n`;
+        
+        if (!resources || resources.length === 0) {
+          resourcesList += 'No resources found matching your criteria.';
+        } else {
+          resources.forEach((resource: any, index: number) => {
+            const profile = resource.profile;
+            const displayName = profile?.full_name || resource.name;
+            const rate = profile?.hourly_rate ? `$${profile.hourly_rate}/hr` : 'Rate not specified';
+            const availability = profile?.availability || 'Not specified';
+            const skillsDisplay = resource.skills?.slice(0, 3).join(', ') || 'No skills listed';
+            const moreSkills = resource.skills?.length > 3 ? ` (+${resource.skills.length - 3} more)` : '';
+
+            resourcesList += `${index + 1}. ${displayName}\n`;
+            resourcesList += `   Role: ${resource.role}\n`;
+            resourcesList += `   Rate: ${rate}\n`;
+            resourcesList += `   Availability: ${availability}\n`;
+            resourcesList += `   Location: ${resource.location}\n`;
+            resourcesList += `   Skills: ${skillsDisplay}${moreSkills}\n`;
+            if (profile?.bio) {
+              const shortBio = profile.bio.length > 100 ? `${profile.bio.substring(0, 100)}...` : profile.bio;
+              resourcesList += `   Bio: ${shortBio}\n`;
+            }
+            resourcesList += `   Resource ID: ${resource.id}\n\n`;
+          });
+        }
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: resourcesList }]
+              }
+            }
+          : { content: resourcesList };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error browsing resources:', error);
+        
+        const errorMessage = 'An error occurred while browsing resources.';
+        
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'getResourceDetail') {
+      try {
+        const resourceId = parameters?.resource_id;
+        if (!resourceId) {
+          return new Response(JSON.stringify({ error: 'Resource ID is required.' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        // Use public anon key for this query (no auth required)
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+        
+        // Fetch resource with full profile details
+        const { data: resourceData, error: resourceError } = await supabase
+          .from('resources')
+          .select(`
+            *,
+            profile:profiles (
+              full_name,
+              username,
+              hourly_rate,
+              availability,
+              bio,
+              linkedin_url,
+              github_url,
+              website,
+              company_name
+            )
+          `)
+          .eq('id', resourceId)
+          .single();
+
+        if (resourceError || !resourceData) {
+          return new Response(JSON.stringify({ error: 'Resource not found.' }), { 
+            status: 404, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        const profile = resourceData.profile;
+        const displayName = profile?.full_name || resourceData.name;
+
+        // Build detailed resource information
+        let resourceDetails = `
+👤 RESOURCE PROFILE
+
+Name: ${displayName}
+Role: ${resourceData.role}
+Location: ${resourceData.location}
+Resource ID: ${resourceData.id}
+        `.trim();
+
+        // Add profile information
+        if (profile) {
+          resourceDetails += `\n\n💼 PROFESSIONAL INFO\n`;
+          
+          if (profile.hourly_rate) {
+            resourceDetails += `Rate: $${profile.hourly_rate}/hr\n`;
+          }
+          
+          if (profile.availability) {
+            resourceDetails += `Availability: ${profile.availability}\n`;
+          }
+          
+          if (profile.company_name) {
+            resourceDetails += `Company: ${profile.company_name}\n`;
+          }
+          
+          if (profile.website) {
+            resourceDetails += `Website: ${profile.website}\n`;
+          }
+        }
+
+        // Add skills
+        if (resourceData.skills && resourceData.skills.length > 0) {
+          resourceDetails += `\n\n🛠️ SKILLS\n`;
+          resourceDetails += resourceData.skills.map((skill: string) => `• ${skill}`).join('\n');
+        }
+
+        // Add bio
+        if (profile?.bio) {
+          resourceDetails += `\n\n📝 ABOUT\n`;
+          resourceDetails += profile.bio;
+        }
+
+        // Add work history
+        if (resourceData.work_history && resourceData.work_history.length > 0) {
+          resourceDetails += `\n\n💼 WORK EXPERIENCE\n`;
+          resourceData.work_history.forEach((job: any, index: number) => {
+            resourceDetails += `\n${index + 1}. ${job.title}`;
+            if (job.company) resourceDetails += ` at ${job.company}`;
+            if (job.dates) resourceDetails += ` (${job.dates})`;
+            if (job.description) resourceDetails += `\n   ${job.description}`;
+          });
+        }
+
+        // Add projects
+        if (resourceData.projects && resourceData.projects.length > 0) {
+          resourceDetails += `\n\n🚀 PROJECTS\n`;
+          resourceData.projects.forEach((project: any, index: number) => {
+            resourceDetails += `\n${index + 1}. ${project.name}`;
+            if (project.description) resourceDetails += `\n   ${project.description}`;
+            if (project.url) resourceDetails += `\n   URL: ${project.url}`;
+          });
+        }
+
+        // Add portfolio links
+        const links = [];
+        if (profile?.linkedin_url) links.push(`LinkedIn: ${profile.linkedin_url}`);
+        if (profile?.github_url) links.push(`GitHub: ${profile.github_url}`);
+        if (resourceData.portfolio_urls && resourceData.portfolio_urls.length > 0) {
+          resourceData.portfolio_urls.forEach((url: string, index: number) => {
+            links.push(`Portfolio ${index + 1}: ${url}`);
+          });
+        }
+
+        if (links.length > 0) {
+          resourceDetails += `\n\n🔗 LINKS\n`;
+          resourceDetails += links.join('\n');
+        }
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: resourceDetails }]
+              }
+            }
+          : { content: resourceDetails };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error getting resource detail:', error);
+        
+        const errorMessage = 'An error occurred while fetching resource details.';
+        
         const responseData = isJsonRpc 
           ? {
               jsonrpc: '2.0',
