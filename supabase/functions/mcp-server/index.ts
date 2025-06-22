@@ -722,6 +722,7 @@ ${index + 1}. ${offer.title}
     }
 
     if (serviceName === 'getOfferDetail') {
+      console.log('[DEBUG] getOfferDetail handler called with parameters:', parameters);
       try {
         const offerId = parameters?.offer_id;
         if (!offerId) {
@@ -734,55 +735,18 @@ ${index + 1}. ${offer.title}
         // Use the public anon key for this query
         const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
         
-        // Fetch offer details with related data
+        console.log('[DEBUG] About to fetch offer with ID:', offerId);
+        
+        // Fetch offer details - using same simple pattern as UI
         const { data: offerData, error: offerError } = await supabase
           .from('offers')
-          .select(`
-            id,
-            title,
-            description,
-            offer_type,
-            status,
-            visibility,
-            budget_min,
-            budget_max,
-            budget_type,
-            location_preference,
-            created_at,
-            created_by,
-            client_offers (
-              objectives,
-              required_skills,
-              success_criteria,
-              deliverables,
-              preferred_skills,
-              project_type,
-              technical_requirements,
-              timeline,
-              start_date,
-              deadline,
-              estimated_duration,
-              team_size_preference,
-              experience_level,
-              communication_style,
-              project_management_style
-            ),
-            team_offers (
-              services_offered,
-              team_size,
-              experience_level,
-              hourly_rate_min,
-              hourly_rate_max,
-              availability,
-              portfolio_items,
-              certifications,
-              specializations
-            )
-          `)
+          .select('*')
           .eq('id', offerId)
           .eq('status', 'active')
           .eq('visibility', 'public')
           .single();
+
+        console.log('[DEBUG] Database query result:', { offerData, offerError });
 
         if (offerError || !offerData) {
           return new Response(JSON.stringify({ error: 'Offer not found or not available.' }), { 
@@ -831,68 +795,15 @@ Description:
 ${offerData.description}
         `.trim();
 
-        // Add offer-type specific details
-        if (offerData.offer_type === 'client_offer' && offerData.client_offers && offerData.client_offers.length > 0) {
-          const clientOffer = offerData.client_offers[0];
+        // Add offer-type specific note (detailed info is in the description)
+        if (offerData.offer_type === 'client_offer') {
           offerDetails += `\n\n🎯 PROJECT REQUIREMENTS\n`;
-          
-          if (clientOffer.objectives && clientOffer.objectives.length > 0) {
-            offerDetails += `\nObjectives:\n${clientOffer.objectives.map(obj => `• ${obj}`).join('\n')}`;
-          }
-          
-          if (clientOffer.required_skills && clientOffer.required_skills.length > 0) {
-            offerDetails += `\n\nRequired Skills:\n${clientOffer.required_skills.map(skill => `• ${skill}`).join('\n')}`;
-          }
-
-          if (clientOffer.deliverables && clientOffer.deliverables.length > 0) {
-            offerDetails += `\n\nDeliverables:\n${clientOffer.deliverables.map(del => `• ${del}`).join('\n')}`;
-          }
-
-          if (clientOffer.timeline) {
-            offerDetails += `\n\nTimeline: ${clientOffer.timeline}`;
-          }
-
-          if (clientOffer.team_size_preference) {
-            offerDetails += `\nPreferred Team Size: ${clientOffer.team_size_preference}`;
-          }
-
-          if (clientOffer.experience_level) {
-            offerDetails += `\nRequired Experience Level: ${clientOffer.experience_level}`;
-          }
+          offerDetails += `This is a client offer looking for a team. Detailed requirements, objectives, and skills are included in the description above.`;
         }
 
-        if (offerData.offer_type === 'team_offer' && offerData.team_offers && offerData.team_offers.length > 0) {
-          const teamOffer = offerData.team_offers[0];
+        if (offerData.offer_type === 'team_offer') {
           offerDetails += `\n\n👥 TEAM INFORMATION\n`;
-          
-          if (teamOffer.services_offered && teamOffer.services_offered.length > 0) {
-            offerDetails += `\nServices Offered:\n${teamOffer.services_offered.map(service => `• ${service}`).join('\n')}`;
-          }
-          
-          if (teamOffer.team_size) {
-            offerDetails += `\n\nTeam Size: ${teamOffer.team_size}`;
-          }
-
-          if (teamOffer.experience_level) {
-            offerDetails += `\nExperience Level: ${teamOffer.experience_level}`;
-          }
-
-          if (teamOffer.hourly_rate_min || teamOffer.hourly_rate_max) {
-            const rateRange = teamOffer.hourly_rate_min && teamOffer.hourly_rate_max 
-              ? `$${teamOffer.hourly_rate_min} - $${teamOffer.hourly_rate_max}/hr`
-              : teamOffer.hourly_rate_min 
-              ? `From $${teamOffer.hourly_rate_min}/hr`
-              : `Up to $${teamOffer.hourly_rate_max}/hr`;
-            offerDetails += `\nHourly Rate: ${rateRange}`;
-          }
-
-          if (teamOffer.availability) {
-            offerDetails += `\nAvailability: ${teamOffer.availability}`;
-          }
-
-          if (teamOffer.specializations && teamOffer.specializations.length > 0) {
-            offerDetails += `\n\nSpecializations:\n${teamOffer.specializations.map(spec => `• ${spec}`).join('\n')}`;
-          }
+          offerDetails += `This is a team offering services. Detailed service offerings, team composition, and capabilities are included in the description above.`;
         }
 
         if (offerData.location_preference) {
