@@ -73,6 +73,66 @@ const AVAILABLE_TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'createOffer',
+    description: 'Create a new offer in the marketplace (requires authentication)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Title of the offer'
+        },
+        description: {
+          type: 'string',
+          description: 'Detailed description of the offer'
+        },
+        offer_type: {
+          type: 'string',
+          enum: ['client_offer', 'team_offer'],
+          description: 'Type of offer: client_offer (looking for team) or team_offer (offering services)'
+        },
+        objectives: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Project objectives (required for client offers)'
+        },
+        required_skills: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Required skills (required for client offers)'
+        },
+        services_offered: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Services offered (required for team offers)'
+        },
+        budget_min: {
+          type: 'number',
+          description: 'Minimum budget (optional)'
+        },
+        budget_max: {
+          type: 'number',
+          description: 'Maximum budget (optional)'
+        },
+        budget_type: {
+          type: 'string',
+          enum: ['fixed', 'hourly', 'milestone', 'negotiable'],
+          description: 'Budget type (default: negotiable)'
+        },
+        team_size: {
+          type: 'number',
+          description: 'Team size (for team offers)'
+        },
+        experience_level: {
+          type: 'string',
+          enum: ['junior', 'mid', 'senior', 'expert'],
+          description: 'Experience level (for team offers, default: mid)'
+        }
+      },
+      required: ['title', 'description', 'offer_type']
+    }
   }
 ];
 
@@ -647,7 +707,151 @@ ${index + 1}. ${offer.title}
       }
     }
 
+    if (serviceName === 'createOffer') {
+      const authResult = await authenticateRequest(req);
 
+      if (!authResult) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your token.' }), { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+
+      if (!hasPermission(authResult, 'offer:create')) {
+        return new Response(JSON.stringify({ error: 'Your token does not have permission to create offers.' }), { 
+          status: 403, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+
+      try {
+        const { title, description, offer_type, objectives, required_skills, services_offered, 
+                budget_min, budget_max, budget_type, team_size, experience_level } = parameters || {};
+
+        // Validate required fields
+        if (!title || !description || !offer_type) {
+          return new Response(JSON.stringify({ error: 'Missing required fields: title, description, and offer_type are required.' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        if (!['client_offer', 'team_offer'].includes(offer_type)) {
+          return new Response(JSON.stringify({ error: 'Invalid offer_type. Must be either "client_offer" or "team_offer".' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
+        // Validate offer-type specific requirements
+        if (offer_type === 'client_offer') {
+          if (!objectives || !Array.isArray(objectives) || objectives.length === 0) {
+            return new Response(JSON.stringify({ error: 'Client offers require at least one objective.' }), { 
+              status: 400, 
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+            });
+          }
+          if (!required_skills || !Array.isArray(required_skills) || required_skills.length === 0) {
+            return new Response(JSON.stringify({ error: 'Client offers require at least one required skill.' }), { 
+              status: 400, 
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+            });
+          }
+        }
+
+        if (offer_type === 'team_offer') {
+          if (!services_offered || !Array.isArray(services_offered) || services_offered.length === 0) {
+            return new Response(JSON.stringify({ error: 'Team offers require at least one service offered.' }), { 
+              status: 400, 
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+            });
+          }
+        }
+
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        let offerId: number;
+
+        if (offer_type === 'client_offer') {
+          // Use the database function for client offers
+          const { data, error } = await supabaseAdmin.rpc('create_client_offer', {
+            p_title: title,
+            p_description: description,
+            p_objectives: objectives,
+            p_required_skills: required_skills,
+            p_budget_min: budget_min || null,
+            p_budget_max: budget_max || null,
+            p_budget_type: budget_type || 'negotiable'
+          });
+
+          if (error) throw error;
+          offerId = data;
+        } else {
+          // Use the database function for team offers
+          const { data, error } = await supabaseAdmin.rpc('create_team_offer', {
+            p_title: title,
+            p_description: description,
+            p_services_offered: services_offered,
+            p_team_size: team_size || null,
+            p_experience_level: experience_level || 'mid'
+          });
+
+          if (error) throw error;
+          offerId = data;
+        }
+
+        const successMessage = `✅ Offer created successfully!
+
+Offer Details:
+- Title: ${title}
+- Type: ${offer_type === 'client_offer' ? 'Client Offer (Looking for Team)' : 'Team Offer (Offering Services)'}
+- Offer ID: ${offerId}
+- Status: Active
+${budget_min || budget_max ? `- Budget: ${budget_min && budget_max ? `$${budget_min} - $${budget_max}` : budget_min ? `From $${budget_min}` : `Up to $${budget_max}`} (${budget_type || 'negotiable'})` : ''}
+
+Your offer is now live in the marketplace and can be discovered by ${offer_type === 'client_offer' ? 'teams and service providers' : 'clients looking for services'}.`;
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: successMessage }]
+              }
+            }
+          : { content: successMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error creating offer:', error);
+        
+        const errorMessage = 'An error occurred while creating the offer. Please try again.';
+        
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
 
     return new Response(JSON.stringify({ error: 'Service not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
