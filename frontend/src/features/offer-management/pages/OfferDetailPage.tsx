@@ -84,10 +84,12 @@ export function OfferDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading offer details...</p>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-300">Loading offer details...</p>
+          </div>
         </div>
       </div>
     );
@@ -95,51 +97,54 @@ export function OfferDetailPage() {
 
   if (error || !offer) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Error: {error || 'Offer not found'}</p>
-          <Link to="/offers" className="text-blue-600 hover:underline mt-2 inline-block">
-            ← Back to offers
-          </Link>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4">
+            <p className="text-red-800 dark:text-red-200">Error: {error || 'Offer not found'}</p>
+            <Link to="/offers" className="text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block">
+              ← Back to offers
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Breadcrumb */}
-      <div className="mb-6">
-        <Link to="/offers" className="text-blue-600 hover:underline">
-          ← Back to offers
-        </Link>
-      </div>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors">
+      <div className="max-w-4xl mx-auto">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <Link to="/offers" className="text-blue-600 dark:text-blue-400 hover:underline">
+            ← Back to offers
+          </Link>
+        </div>
 
-      {/* Offer Details */}
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 mb-8">
+        {/* Offer Details */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-8 mb-8">
         <div className="flex justify-between items-start mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-3xl font-bold text-gray-900">{offer.title}</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{offer.title}</h1>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   offer.offer_type === 'client_offer'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-green-100 text-green-800'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
+                    : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                 }`}
               >
                 {offer.offer_type === 'client_offer' ? 'Client Looking for Team' : 'Team Offering Services'}
               </span>
             </div>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               Posted {new Date(offer.created_at).toLocaleDateString()} • ID: {offer.id}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {formatBudget(offer)}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {offer.budget_type || 'negotiable'}
             </p>
           </div>
@@ -147,43 +152,43 @@ export function OfferDetailPage() {
 
         {/* Description */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
-          <div className="prose prose-sm max-w-none">
-            <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Description</h3>
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            <pre className="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
               {offer.description}
             </pre>
           </div>
         </div>
 
         {/* Offer Metadata */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200 dark:border-gray-600">
           <div>
-            <h4 className="font-medium text-gray-900">Status</h4>
-            <p className="text-gray-600">{offer.status}</p>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">Status</h4>
+            <p className="text-gray-600 dark:text-gray-400">{offer.status}</p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900">Visibility</h4>
-            <p className="text-gray-600">{offer.visibility}</p>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">Visibility</h4>
+            <p className="text-gray-600 dark:text-gray-400">{offer.visibility}</p>
           </div>
           {offer.location_preference && (
             <div>
-              <h4 className="font-medium text-gray-900">Location</h4>
-              <p className="text-gray-600">{offer.location_preference}</p>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">Location</h4>
+              <p className="text-gray-600 dark:text-gray-400">{offer.location_preference}</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Bids Section */}
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Bids ({bids.length})
-          </h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Submit New Bid
-          </button>
-        </div>
+        {/* Bids Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Bids ({bids.length})
+            </h2>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              Submit New Bid
+            </button>
+          </div>
 
         {bids.length === 0 ? (
           <div className="text-center py-8">
@@ -252,6 +257,7 @@ export function OfferDetailPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -240,13 +240,14 @@ export function OfferBrowsePage() {
                   </div>
                 </div>
 
-                {/* Description with markdown-like formatting preserved */}
+                {/* Truncated Description */}
                 <div className="mb-4">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <pre className="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {offer.description}
-                    </pre>
-                  </div>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {offer.description.length > 150 
+                      ? `${offer.description.substring(0, 150)}...` 
+                      : offer.description
+                    }
+                  </p>
                 </div>
 
                 <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
