@@ -21,10 +21,10 @@ export interface TeamMember {
   user_id: string;
   role?: 'owner' | 'admin' | 'member';
   joined_at?: string;
-  // Profile information when fetched with joins
-  profile?: {
+  // Profile information when fetched with joins (note: API returns 'profiles' not 'profile')
+  profiles?: {
     id: string;
-    email: string;
+    username: string; // username is the email address
     full_name?: string;
     avatar_url?: string;
   };

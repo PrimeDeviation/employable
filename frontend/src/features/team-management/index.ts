@@ -1,5 +1,6 @@
 // Export pages
 export { TeamBrowsePage } from './pages/TeamBrowsePage';
+export { TeamDetailPage } from './pages/TeamDetailPage';
 
 // Export hooks
 export { useTeams } from './hooks/useTeams';

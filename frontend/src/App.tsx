@@ -17,7 +17,7 @@ import ContractCreate from './pages/ContractCreate';
 import ContractDetail from './pages/ContractDetail';
 import AdminPanel from './pages/AdminPanel';
 import { OfferCreationPage, OfferBrowsePage, OfferDetailPage } from './features/offer-management';
-import { TeamBrowsePage } from './features/team-management';
+import { TeamBrowsePage, TeamDetailPage } from './features/team-management';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -51,6 +51,7 @@ const MainApp: React.FC = () => {
           <Route path="/profile/edit" element={session ? <ProfileEdit /> : <Navigate to="/login" />} />
           <Route path="/teams" element={session ? <TeamPage /> : <Navigate to="/login" />} />
           <Route path="/teams/browse" element={<TeamBrowsePage />} />
+          <Route path="/teams/:id" element={<TeamDetailPage />} />
           <Route path="/availability" element={session ? <AvailabilityManager /> : <Navigate to="/login" />} />
           <Route path="/messages" element={session ? <Messages /> : <Navigate to="/login" />} />
           <Route path="/contact/:resourceId" element={session ? <ContactPilot /> : <Navigate to="/login" />} />

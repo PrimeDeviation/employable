@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { TeamEditModal } from '../features/team-management/components/TeamEditModal';
 import { Team } from '../features/team-management/types';
 import { useTeamInvitations } from '../features/team-management/hooks/useTeamInvitations';
 
@@ -11,7 +11,7 @@ export default function TeamPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTeamName, setNewTeamName] = useState('');
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+
   const { invitations, acceptInvitation, declineInvitation, isLoading: invitationsLoading } = useTeamInvitations();
 
   useEffect(() => {
@@ -65,14 +65,7 @@ export default function TeamPage() {
     }
   };
 
-  const handleTeamUpdated = (updatedTeam: Team) => {
-    setTeams(prevTeams => 
-      prevTeams.map(team => 
-        team.id === updatedTeam.id ? updatedTeam : team
-      )
-    );
-    setEditingTeam(null);
-  };
+
 
   const handleAcceptInvitation = async (invitationId: string) => {
     try {
@@ -198,77 +191,72 @@ export default function TeamPage() {
       <div className="space-y-4">
         {teams.length > 0 ? (
           teams.map(team => (
-            <div key={team.id} className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{team.name}</h3>
-                    {team.availability && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAvailabilityColor(team.availability)}`}>
-                        {team.availability}
-                      </span>
-                    )}
-                    {team.public_profile && (
-                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-                        Public
-                      </span>
-                    )}
-                  </div>
-                  
-                  {team.description && (
-                    <p className="text-gray-600 dark:text-gray-400 mb-3">{team.description}</p>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    {team.location && (
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {team.location}
-                        {team.remote_work && <span className="text-green-600 dark:text-green-400">• Remote OK</span>}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                      </svg>
-                      {formatRate(team)}
-                    </div>
-                  </div>
-
-                  {team.skills && team.skills.length > 0 && (
-                    <div className="mt-3">
-                      <div className="flex flex-wrap gap-2">
-                        {team.skills.slice(0, 6).map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full"
-                          >
-                            {skill}
+            <div key={team.id} className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <Link to={`/teams/${team.id}`} className="block">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{team.name}</h3>
+                        {team.availability && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAvailabilityColor(team.availability)}`}>
+                            {team.availability}
                           </span>
-                        ))}
-                        {team.skills.length > 6 && (
-                          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
-                            +{team.skills.length - 6} more
+                        )}
+                        {team.public_profile && (
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
+                            Public
                           </span>
                         )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                      
+                      {team.description && (
+                        <p className="text-gray-600 dark:text-gray-400 mb-3">{team.description}</p>
+                      )}
 
-                <div className="flex gap-2">
-                  {user?.id === team.owner_id && (
-                    <button
-                      onClick={() => setEditingTeam(team)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                    >
-                      Edit
-                    </button>
-                  )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {team.location && (
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {team.location}
+                            {team.remote_work && <span className="text-green-600 dark:text-green-400">• Remote OK</span>}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                          </svg>
+                          {formatRate(team)}
+                        </div>
+                      </div>
+
+                      {team.skills && team.skills.length > 0 && (
+                        <div className="mt-3">
+                          <div className="flex flex-wrap gap-2">
+                            {team.skills.slice(0, 6).map((skill, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {team.skills.length > 6 && (
+                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
+                                +{team.skills.length - 6} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Link>
+                  </div>
+
+
                 </div>
               </div>
             </div>
@@ -278,15 +266,7 @@ export default function TeamPage() {
         )}
       </div>
 
-      {/* Team Edit Modal */}
-      {editingTeam && (
-        <TeamEditModal
-          isOpen={!!editingTeam}
-          onClose={() => setEditingTeam(null)}
-          team={editingTeam}
-          onTeamUpdated={handleTeamUpdated}
-        />
-      )}
+
     </div>
   );
 } 

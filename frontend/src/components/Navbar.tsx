@@ -8,8 +8,8 @@ const directLinks = [
   { to: '/resources', label: 'Browse Resources' },
   { to: '/teams/browse', label: 'Browse Teams' },
   { to: '/offers', label: 'Browse Offers' },
-  { to: '/contracts', label: 'Contracts' },
   { to: '/teams', label: 'My Teams' },
+  { to: '/contracts', label: 'Contracts' },
   { to: '/account', label: 'Profile' },
 ];
 
