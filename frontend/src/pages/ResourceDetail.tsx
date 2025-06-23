@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import TeamInviteModal from '../components/TeamInviteModal';
+import { TeamInviteButton } from '../features/team-management';
 
 interface Resource {
   id: number;
@@ -187,22 +188,37 @@ const ResourceDetail: React.FC = () => {
 
       setLoading(false);
     };
-    if (id) fetchResourceAndProfile();
+    if (id) {
+      fetchResourceAndProfile().catch(err => {
+        console.error('Error in fetchResourceAndProfile:', err);
+        setError('Failed to load resource details.');
+        setLoading(false);
+      });
+    }
   }, [id]);
 
   useEffect(() => {
     const fetchInvites = async () => {
-      if (user && isOwner) {
-        const { data } = await supabase
-          .from('team_invitations')
-          .select('id, team_id, team:teams(name)')
-          .eq('invitee_email', user.email)
-          .eq('status', 'pending');
-        setPendingInvites(data || []);
+      if (user && resource && user.id === resource.profile_id) {
+        try {
+          const { data, error } = await supabase
+            .from('team_invitations')
+            .select('id, team_id, team:teams(name)')
+            .eq('invitee_email', user.email)
+            .eq('status', 'pending');
+          
+          if (error) {
+            console.error('Error fetching invites:', error);
+          } else {
+            setPendingInvites(data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching invites:', err);
+        }
       }
     };
     fetchInvites();
-  }, [user, isOwner]);
+  }, [user, resource]);
 
   const handleInviteToTeam = () => {
     setInviteModalOpen(true);
@@ -218,8 +234,8 @@ const ResourceDetail: React.FC = () => {
     }
   };
 
-  // Debug logging
-  console.log('ResourceDetail render - user:', user?.id, 'userOwnedTeams:', userOwnedTeams.length, 'isOwner:', isOwner);
+  // Debug logging (commented out to prevent console spam)
+  // console.log('ResourceDetail render - user:', user?.id, 'userOwnedTeams:', userOwnedTeams.length, 'isOwner:', isOwner);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 px-4 transition-colors flex flex-col items-center">
@@ -249,21 +265,10 @@ const ResourceDetail: React.FC = () => {
                 </Link>
               ) : user ? (
                 <div className="flex gap-2">
-                  <Link to={`/contact/${resource.id}`}>
-                    <Button size="sm">
-                      Contact Pilot
-                    </Button>
-                  </Link>
-                  <Link to={`/contracts/create?resourceId=${resource.id}`}>
-                    <Button variant="outline" size="sm">
-                      Create Contract
-                    </Button>
-                  </Link>
-                  {userOwnedTeams.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={handleInviteToTeam}>
-                      Invite to Team ({userOwnedTeams.length} teams)
-                    </Button>
-                  )}
+                  <TeamInviteButton 
+                    resourceUserId={resource.profile_id}
+                    resourceName={resource.name}
+                  />
                 </div>
               ) : null}
             </div>

@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useTeamInvitations } from '../features/team-management/hooks/useTeamInvitations';
 
 // Direct navigation links
 const directLinks = [
   { to: '/resources', label: 'Browse Resources' },
+  { to: '/teams/browse', label: 'Browse Teams' },
   { to: '/offers', label: 'Browse Offers' },
   { to: '/contracts', label: 'Contracts' },
   { to: '/teams', label: 'My Teams' },
@@ -15,6 +17,7 @@ const Navbar: React.FC = () => {
   const { theme, isDark, setTheme } = useDarkMode();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLButtonElement | null>(null);
+  const { pendingCount } = useTeamInvitations();
 
   // TODO: Replace with actual admin check from auth context
   const isAdmin = false; // This should come from your auth context
@@ -62,9 +65,14 @@ const Navbar: React.FC = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors relative"
                 >
                   {link.label}
+                  {link.to === '/teams' && pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
                 </Link>
               ))}
               {isAdmin && (
