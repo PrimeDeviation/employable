@@ -202,6 +202,46 @@ const AVAILABLE_TOOLS = [
       },
       required: ['resource_id']
     }
+  },
+  {
+    name: 'browseTeams',
+    description: 'Browse available teams in the marketplace',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of teams to return (default: 10)'
+        },
+        offset: {
+          type: 'number',
+          description: 'Number of teams to skip for pagination (default: 0)'
+        },
+        skills_filter: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by skills (optional)'
+        },
+        location_filter: {
+          type: 'string',
+          description: 'Filter by location (optional)'
+        },
+        availability_filter: {
+          type: 'string',
+          enum: ['available', 'busy', 'unavailable'],
+          description: 'Filter by availability status (optional)'
+        },
+        remote_work_filter: {
+          type: 'boolean',
+          description: 'Filter by remote work capability (optional)'
+        },
+        search: {
+          type: 'string',
+          description: 'Search by team name or description (optional)'
+        }
+      },
+      required: []
+    }
   }
 ];
 
@@ -1374,6 +1414,149 @@ Resource ID: ${resourceData.id}
         console.error('Error getting resource detail:', error);
         
         const errorMessage = 'An error occurred while fetching resource details.';
+        
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'browseTeams') {
+      try {
+        const { limit = 10, offset = 0, skills_filter, location_filter, availability_filter, remote_work_filter, search } = parameters || {};
+
+        // Use public anon key for this query (no auth required)
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+        
+        // Build query with filters - only show public teams
+        let query = supabase
+          .from('teams')
+          .select(`
+            id,
+            name,
+            description,
+            skills,
+            location,
+            remote_work,
+            team_size,
+            hourly_rate_min,
+            hourly_rate_max,
+            availability,
+            website,
+            created_at,
+            team_members (
+              user_id,
+              profiles (
+                full_name,
+                username
+              )
+            )
+          `)
+          .eq('public_profile', true)
+          .order('updated_at', { ascending: false });
+
+        // Apply filters
+        if (skills_filter && skills_filter.length > 0) {
+          query = query.overlaps('skills', skills_filter);
+        }
+        if (location_filter) {
+          query = query.ilike('location', `%${location_filter}%`);
+        }
+        if (availability_filter) {
+          query = query.eq('availability', availability_filter);
+        }
+        if (remote_work_filter !== undefined) {
+          query = query.eq('remote_work', remote_work_filter);
+        }
+        if (search) {
+          query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+        }
+
+        // Apply pagination
+        query = query.range(offset, offset + limit - 1);
+
+        const { data: teams, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        // Format response
+        let teamsList = `🏢 Available Teams (${teams?.length || 0} found):\n\n`;
+        
+        if (!teams || teams.length === 0) {
+          teamsList += 'No teams found matching your criteria.';
+        } else {
+          teams.forEach((team: any, index: number) => {
+            const memberCount = team.team_members?.length || 0;
+            const rateInfo = team.hourly_rate_min && team.hourly_rate_max 
+              ? `$${team.hourly_rate_min} - $${team.hourly_rate_max}/hr`
+              : team.hourly_rate_min 
+              ? `From $${team.hourly_rate_min}/hr`
+              : team.hourly_rate_max
+              ? `Up to $${team.hourly_rate_max}/hr`
+              : 'Rate negotiable';
+            
+            const skillsDisplay = team.skills?.slice(0, 4).join(', ') || 'No skills listed';
+            const moreSkills = team.skills?.length > 4 ? ` (+${team.skills.length - 4} more)` : '';
+            
+            teamsList += `${index + 1}. ${team.name}\n`;
+            teamsList += `   Members: ${memberCount}`;
+            if (team.team_size) teamsList += ` (target: ${team.team_size})`;
+            teamsList += `\n`;
+            teamsList += `   Rate: ${rateInfo}\n`;
+            teamsList += `   Location: ${team.location}`;
+            if (team.remote_work) teamsList += ` (Remote OK)`;
+            teamsList += `\n`;
+            if (team.availability) teamsList += `   Availability: ${team.availability}\n`;
+            teamsList += `   Skills: ${skillsDisplay}${moreSkills}\n`;
+            
+            if (team.description) {
+              const shortDesc = team.description.length > 120 ? `${team.description.substring(0, 120)}...` : team.description;
+              teamsList += `   About: ${shortDesc}\n`;
+            }
+            
+            if (team.website) {
+              teamsList += `   Website: ${team.website}\n`;
+            }
+            
+            teamsList += `   Team ID: ${team.id}\n\n`;
+          });
+          
+          teamsList += `💡 Use getTeamDetail with a Team ID to see full team information and member details.`;
+        }
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: teamsList }]
+              }
+            }
+          : { content: teamsList };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error browsing teams:', error);
+        
+        const errorMessage = 'An error occurred while browsing teams.';
         
         const responseData = isJsonRpc 
           ? {
