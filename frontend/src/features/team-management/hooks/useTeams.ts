@@ -19,7 +19,7 @@ export function useTeams() {
             user_id,
             profiles (
               id,
-              email,
+              username,
               full_name,
               avatar_url
             )
@@ -91,7 +91,7 @@ export function useTeams() {
             user_id,
             profiles (
               id,
-              email,
+              username,
               full_name,
               avatar_url
             )
