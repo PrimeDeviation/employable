@@ -130,14 +130,41 @@ Expected: Tool count should increase (e.g., 8 → 9 tools)
 
 ### Functional Testing
 
-#### Through MCP Interface
-Use the MCP tools panel in Cursor to test your implementation:
-- Verify tool appears in interface
-- Test with various parameter combinations
-- Validate response formatting
-- Check edge cases (empty results, invalid params)
+#### Through Cursor Chat Interface (Primary Method)
+**This is the preferred testing method for Cursor-based implementations:**
 
-#### Direct API Testing
+1. **Tool Discovery**: Ask the user "What tools do you see available?" to verify your new tool appears in their MCP interface
+2. **Basic Functionality Test**: Test the tool directly in chat:
+   ```
+   User: "let's test the browseTeams tool through this chat. Do you see it listed?"
+   Assistant: Use mcp_employable-agents_browseTeams with basic parameters
+   ```
+
+3. **Parameter Validation**: Test different parameter combinations:
+   ```
+   // Basic call
+   mcp_employable-agents_browseTeams(limit: 5, offset: 0)
+   
+   // With filters
+   mcp_employable-agents_browseTeams(skills_filter: ["AI", "DevOps"], limit: 3)
+   
+   // Search functionality
+   mcp_employable-agents_browseTeams(search: "AI", limit: 1)
+   ```
+
+4. **Edge Case Testing**: Test edge cases through chat:
+   - Empty results scenarios
+   - Invalid parameter values
+   - Missing required parameters
+   - Large result sets (pagination)
+
+#### Through MCP Tools Panel
+Use the MCP tools panel in Cursor as backup verification:
+- Verify tool appears in interface
+- Cross-reference tool count (e.g., 8 → 9 tools)
+- Validate parameter schema display
+
+#### Direct API Testing (Development Only)
 ```bash
 curl -X POST http://localhost:9999/mcp-server \
   -H "Content-Type: application/json" \
@@ -156,6 +183,31 @@ curl -X POST http://localhost:9999/mcp-server \
 
 **CRITICAL**: Always test existing tools after adding new ones.
 
+#### Cursor Chat Regression Testing
+**Example from browseTeams implementation:**
+
+1. **Tool Count Verification**: 
+   ```
+   User: "Check again" (to verify tool count)
+   Assistant confirms: "I can see all 9 tools are now available"
+   ```
+
+2. **Sequential Tool Testing**: Test read-only tools in chat:
+   ```
+   // Test core functionality remains intact
+   mcp_employable-agents_browseOffers()
+   mcp_employable-agents_browseResources()  
+   mcp_employable-agents_getOfferDetail(offer_id: 1)
+   mcp_employable-agents_getResourceDetail(resource_id: 1)
+   mcp_employable-agents_browseTeams(limit: 2) // Your new tool
+   ```
+
+3. **Response Quality Check**: Verify each tool returns:
+   - Properly formatted responses
+   - Expected data structure
+   - No error messages
+   - Consistent styling and emojis
+
 #### Safe Tests (Read-Only)
 ✅ Test these without data concerns:
 - `browseOffers`
@@ -172,10 +224,11 @@ curl -X POST http://localhost:9999/mcp-server \
 
 #### Regression Test Checklist
 - [ ] All tools visible in MCP interface
-- [ ] Existing tools return expected data
-- [ ] Response formatting consistent
-- [ ] No database query errors
+- [ ] Existing tools return expected data through chat testing
+- [ ] Response formatting consistent across all tools
+- [ ] No database query errors in server logs
 - [ ] Server processing requests without crashes
+- [ ] User confirms regression testing successful
 
 ## Architecture Patterns
 
@@ -249,11 +302,47 @@ Reference the `browseTeams` tool implementation for a complete example including
 - Provide actionable next steps in footers
 - Maintain consistent field naming
 
+## Collaborative Testing with Cursor User
+
+### Key Testing Partnership
+The Cursor user plays a crucial role in testing MCP tools since they have direct access to the MCP interface:
+
+#### User's Role:
+- **Visual Confirmation**: User can see the MCP tools panel and confirm tool availability
+- **Real-time Testing**: User requests specific tool tests through chat
+- **Interface Validation**: User provides screenshots/feedback on tool visibility
+- **Regression Confirmation**: User validates that all tools still work
+
+#### Assistant's Role:
+- **Implementation Testing**: Call tools directly in chat to demonstrate functionality
+- **Parameter Exploration**: Test various parameter combinations systematically
+- **Error Handling**: Test edge cases and validate error responses
+- **Documentation**: Explain what each test validates
+
+#### Example Testing Dialog:
+```
+User: "I see 9 tools now"
+Assistant: "Great! Let me test the new browseTeams tool:"
+         [calls mcp_employable-agents_browseTeams]
+User: "let's regression test each of the other tools"
+Assistant: [systematically tests each read-only tool]
+User: "great work. And good call not testing the additive tools"
+```
+
+### Testing Best Practices:
+1. **Always confirm tool visibility** with user before testing functionality
+2. **Test incrementally** - one tool at a time with user feedback
+3. **Explain what you're testing** so user understands the validation process
+4. **Get user confirmation** before proceeding to regression testing
+5. **Document any issues** the user reports about tool behavior
+
 ## Deployment & Commit Process
 
 1. **Test Locally**: Verify all functionality works
-2. **Run Regression Tests**: Ensure no breaking changes
-3. **Commit Changes**:
+2. **Test with User**: Collaborative testing through Cursor chat interface
+3. **Run Regression Tests**: Ensure no breaking changes
+4. **Get User Approval**: User confirms all tools working properly
+5. **Commit Changes**:
    ```bash
    git add supabase/functions/mcp-server/index.ts
    git commit -m "Add [toolName] MCP tool for [purpose]
