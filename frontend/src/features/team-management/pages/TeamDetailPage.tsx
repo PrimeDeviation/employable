@@ -216,21 +216,46 @@ export function TeamDetailPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Team Members</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {team.team_members.map((member, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                     <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                     {member.profiles?.full_name?.[0] || member.profiles?.username?.[0] || '?'}
-                   </div>
-                   <div>
-                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                       {member.profiles?.full_name || member.profiles?.username || 'Unknown'}
-                     </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {member.user_id === team.owner_id ? 'Team Owner' : 'Member'}
-                    </p>
+              {team.team_members.map((member, index) => {
+                const resourceId = member.profiles?.resources?.id;
+                const memberCard = (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                      {member.profiles?.full_name?.[0] || member.profiles?.username?.[0] || '?'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {member.profiles?.full_name || member.profiles?.username || 'Unknown'}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {member.user_id === team.owner_id ? 'Team Owner' : 'Member'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+
+                return resourceId ? (
+                  <Link key={index} to={`/resource/${resourceId}`}>
+                    {memberCard}
+                  </Link>
+                ) : (
+                  <div key={index} title="No public profile available">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg opacity-75">
+                      <div className="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-semibold">
+                        {member.profiles?.full_name?.[0] || member.profiles?.username?.[0] || '?'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {member.profiles?.full_name || member.profiles?.username || 'Unknown'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {member.user_id === team.owner_id ? 'Team Owner' : 'Member'} • No public profile
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

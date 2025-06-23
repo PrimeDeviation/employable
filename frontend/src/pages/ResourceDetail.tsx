@@ -342,15 +342,17 @@ const ResourceDetail: React.FC = () => {
                     <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">Manager of:</h4>
                     <div className="space-y-2">
                       {ownedTeams.map((team) => (
-                        <div key={team.team_id} className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3">
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-indigo-500 rounded-full mr-3"></div>
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                        <Link key={team.team_id} to={`/teams/${team.team_id}`}>
+                          <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-indigo-500 rounded-full mr-3"></div>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                            </div>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {team.member_count} member{team.member_count !== 1 ? 's' : ''}
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {team.member_count} member{team.member_count !== 1 ? 's' : ''}
-                          </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -362,15 +364,17 @@ const ResourceDetail: React.FC = () => {
                     <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">Member of:</h4>
                     <div className="space-y-2">
                       {memberTeams.map((team) => (
-                        <div key={team.team_id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-gray-400 rounded-full mr-3"></div>
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                        <Link key={team.team_id} to={`/teams/${team.team_id}`}>
+                          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-gray-400 rounded-full mr-3"></div>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{team.team_name}</span>
+                            </div>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Led by {team.owner_name}
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            Led by {team.owner_name}
-                          </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>

@@ -27,6 +27,9 @@ export interface TeamMember {
     username: string; // username is the email address
     full_name?: string;
     avatar_url?: string;
+    resources?: {
+      id: number;
+    } | null;
   };
 }
 

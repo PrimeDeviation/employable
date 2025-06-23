@@ -21,7 +21,8 @@ export function useTeams() {
               id,
               username,
               full_name,
-              avatar_url
+              avatar_url,
+              resources (id)
             )
           )
         `)
@@ -93,7 +94,8 @@ export function useTeams() {
               id,
               username,
               full_name,
-              avatar_url
+              avatar_url,
+              resources (id)
             )
           )
         `)
