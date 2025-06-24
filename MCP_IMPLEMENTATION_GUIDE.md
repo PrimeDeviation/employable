@@ -2,6 +2,17 @@
 
 This guide documents the process for implementing and testing new MCP (Model Context Protocol) tools in the Employable platform.
 
+## For Cursor AI Assistants Reading This Guide
+
+**Context**: You are a Cursor AI assistant working with a developer to implement MCP tools for the Employable marketplace. This guide contains everything you need to know to implement and test MCP tools without requiring detailed explanations from the user.
+
+**Key Points**:
+- The user expects you to be proactive in testing tools via Cursor chat
+- You have direct access to MCP tools in Cursor with the `mcp_employable-agents_` prefix
+- Follow the patterns established in existing tools (see `browseTeams` as reference)
+- The Supabase functions server may need multiple startup attempts - this is normal
+- Cursor chat testing is preferred over systematic API testing
+
 ## Overview
 
 The MCP server is implemented as a Supabase Edge Function that provides programmatic access to the Employable marketplace through a standardized protocol interface.
@@ -27,6 +38,8 @@ The MCP server is implemented as a Supabase Edge Function that provides programm
 - `browseTeams` - Browse available teams with filtering *(Latest Addition)*
 
 ## Implementation Process
+
+**Important for Cursor AI Assistants**: When the user asks you to implement an MCP tool, follow these steps exactly. You should proactively implement, test, and iterate without waiting for detailed instructions.
 
 ### Step 1: Tool Definition
 
@@ -106,129 +119,119 @@ const formatResponse = (data) => {
 
 ### Development Server Setup
 
-1. **Start the Functions Server**:
+1. **Start the Functions Server** (may require multiple attempts):
    ```bash
    cd /path/to/employable
    npx supabase functions serve
    ```
+   
+   **Common Issues & Solutions**:
+   - If server terminates immediately, try restarting: `npx supabase functions serve`
+   - Ignore env file errors - basic command usually works without env files
+   - Watch for "Listening on http://localhost:9999/" in terminal output
+   - Debug logs showing dependency loading are normal and expected
 
 2. **Verify Server Status**:
-   - Check terminal output for "Listening on http://localhost:9999/"
-   - Server should show debug output for requests
+   - Check terminal shows "Listening on http://localhost:9999/"
+   - Server should show debug output for incoming requests
+   - Don't worry about initial "name resolution failed" errors - often temporary
 
-### Tool Discovery Testing
+### Primary Testing Method: Cursor Chat Interface
 
-Test that your new tool appears in the available tools list:
+**This is the main testing approach we use:**
 
+#### For the Assistant/Model:
+You can directly test MCP tools from chat without asking the user for permission or explanation. The tools are automatically available in your interface with the prefix `mcp_employable-agents_`.
+
+**Standard Testing Flow:**
+1. **Tool Discovery**: Check if new tool appears by calling it directly
+2. **Basic Functionality Test**: 
+   ```
+   mcp_employable-agents_browseTeams(limit: 2)
+   ```
+3. **Parameter Testing**: Test different combinations as needed:
+   ```
+   mcp_employable-agents_browseTeams(skills_filter: ["AI", "DevOps"], limit: 3)
+   mcp_employable-agents_browseTeams(search: "AI", limit: 1)
+   ```
+
+**Available MCP Tools for Testing:**
+- `mcp_employable-agents_browseOffers()`
+- `mcp_employable-agents_browseResources()`
+- `mcp_employable-agents_browseTeams()`
+- `mcp_employable-agents_getResourceDetail(resource_id: number)`
+- `mcp_employable-agents_getOfferDetail(offer_id: number)`
+- `mcp_employable-agents_getProfile(username: string)`
+
+**Testing Instructions for Model:**
+- Call tools directly without asking user first
+- If tool responds with data, it's working correctly
+- Report any errors or unexpected responses
+- User expects you to test tools proactively during development
+
+**If tool calls work from chat, that's sufficient for validation.**
+
+### Troubleshooting: If Chat Testing Fails
+
+If tool calls don't work from chat or you need deeper debugging, use these systematic methods:
+
+#### 1. Verify Tool Registration
 ```bash
 curl -X POST http://localhost:9999/mcp-server \
   -H "Content-Type: application/json" \
   -d '{"method": "tools/list", "jsonrpc": "2.0", "id": 1}'
 ```
-
 Expected: Tool count should increase (e.g., 8 → 9 tools)
 
-### Functional Testing
-
-#### Through Cursor Chat Interface (Primary Method)
-**This is the preferred testing method for Cursor-based implementations:**
-
-1. **Tool Discovery**: Ask the user "What tools do you see available?" to verify your new tool appears in their MCP interface
-2. **Basic Functionality Test**: Test the tool directly in chat:
-   ```
-   User: "let's test the browseTeams tool through this chat. Do you see it listed?"
-   Assistant: Use mcp_employable-agents_browseTeams with basic parameters
-   ```
-
-3. **Parameter Validation**: Test different parameter combinations:
-   ```
-   // Basic call
-   mcp_employable-agents_browseTeams(limit: 5, offset: 0)
-   
-   // With filters
-   mcp_employable-agents_browseTeams(skills_filter: ["AI", "DevOps"], limit: 3)
-   
-   // Search functionality
-   mcp_employable-agents_browseTeams(search: "AI", limit: 1)
-   ```
-
-4. **Edge Case Testing**: Test edge cases through chat:
-   - Empty results scenarios
-   - Invalid parameter values
-   - Missing required parameters
-   - Large result sets (pagination)
-
-#### Through MCP Tools Panel
-Use the MCP tools panel in Cursor as backup verification:
-- Verify tool appears in interface
-- Cross-reference tool count (e.g., 8 → 9 tools)
-- Validate parameter schema display
-
-#### Direct API Testing (Development Only)
+#### 2. Direct API Testing
 ```bash
 curl -X POST http://localhost:9999/mcp-server \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
     "params": {
-      "name": "yourToolName",
-      "arguments": {"param": "value"}
+      "name": "browseTeams",
+      "arguments": {"limit": 2}
     },
     "jsonrpc": "2.0",
     "id": 1
   }'
 ```
 
-### Regression Testing Protocol
+#### 3. Check Server Logs
+- Look for compilation errors in terminal
+- Check for database connection issues
+- Verify proper JSON-RPC request parsing
 
-**CRITICAL**: Always test existing tools after adding new ones.
+#### 4. Parameter Validation Testing
+Test different parameter combinations systematically:
+- Basic call with minimal parameters
+- With optional filters
+- Edge cases (empty results, invalid values)
 
-#### Cursor Chat Regression Testing
-**Example from browseTeams implementation:**
+### Regression Testing (Optional but Recommended)
 
-1. **Tool Count Verification**: 
-   ```
-   User: "Check again" (to verify tool count)
-   Assistant confirms: "I can see all 9 tools are now available"
-   ```
+**Goal**: Verify existing tools still work after adding new ones.
 
-2. **Sequential Tool Testing**: Test read-only tools in chat:
-   ```
-   // Test core functionality remains intact
-   mcp_employable-agents_browseOffers()
-   mcp_employable-agents_browseResources()  
-   mcp_employable-agents_getOfferDetail(offer_id: 1)
-   mcp_employable-agents_getResourceDetail(resource_id: 1)
-   mcp_employable-agents_browseTeams(limit: 2) // Your new tool
-   ```
+#### Quick Regression Check via Chat:
+Ask user to confirm tool count, then test a few existing tools:
+```
+User: "I see 9 tools now" (confirms tool count increased)
+Assistant: "Great! Let me test a couple existing tools:"
+mcp_employable-agents_browseOffers()
+mcp_employable-agents_browseResources()
+mcp_employable-agents_browseTeams(limit: 2) // Your new tool
+```
 
-3. **Response Quality Check**: Verify each tool returns:
-   - Properly formatted responses
-   - Expected data structure
-   - No error messages
-   - Consistent styling and emojis
+**If existing tools respond normally from chat, regression testing is complete.**
 
-#### Safe Tests (Read-Only)
-✅ Test these without data concerns:
-- `browseOffers`
-- `browseResources` 
-- `browseTeams`
-- `getResourceDetail`
-- `getOfferDetail`
+#### Safe Tools for Testing (Read-Only):
+✅ Always safe to test:
+- `browseOffers`, `browseResources`, `browseTeams`
+- `getResourceDetail`, `getOfferDetail`
 
-#### Avoid in Testing (Write Operations)
-❌ Don't test these during regression:
-- `createOffer`
-- `updateMyProfile`
-- Any tool that modifies data
-
-#### Regression Test Checklist
-- [ ] All tools visible in MCP interface
-- [ ] Existing tools return expected data through chat testing
-- [ ] Response formatting consistent across all tools
-- [ ] No database query errors in server logs
-- [ ] Server processing requests without crashes
-- [ ] User confirms regression testing successful
+❌ Avoid testing (modify data):
+- `createOffer`, `updateMyProfile`
 
 ## Architecture Patterns
 
@@ -284,12 +287,16 @@ if (!data || data.length === 0) {
 
 ## Common Patterns & Examples
 
-### Example: browseTeams Implementation
-Reference the `browseTeams` tool implementation for a complete example including:
-- Comprehensive filtering options
-- Proper response formatting
-- Pagination support
-- Public access (no auth required)
+### Example: browseTeams Implementation (Use as Template)
+**For AI Assistants**: Always reference this implementation when creating new tools. It contains all the patterns you need:
+
+Located in `supabase/functions/mcp-server/index.ts` around line 1430, this tool shows:
+- Comprehensive filtering options (skills, location, availability, search)
+- Proper response formatting with emojis and human-readable text
+- Pagination support (limit/offset)
+- Public access (no auth required - uses anon key)
+- Error handling patterns
+- Database query patterns with proper joins
 
 ### Database Schema Integration
 - Use proper table relationships with `.select()` joins
@@ -338,11 +345,14 @@ User: "great work. And good call not testing the additive tools"
 
 ## Deployment & Commit Process
 
-1. **Test Locally**: Verify all functionality works
-2. **Test with User**: Collaborative testing through Cursor chat interface
-3. **Run Regression Tests**: Ensure no breaking changes
-4. **Get User Approval**: User confirms all tools working properly
-5. **Commit Changes**:
+**For AI Assistants**: Follow this exact sequence when implementing new tools:
+
+1. **Implement Tool**: Add to AVAILABLE_TOOLS and implement handler
+2. **Start Server**: Help user start `npx supabase functions serve` (expect multiple attempts)
+3. **Test Proactively**: Call your new tool directly from chat to verify it works
+4. **Quick Regression**: Test 2-3 existing tools to ensure no breakage
+5. **Report Results**: Tell user "Tool implemented and tested successfully"
+6. **Commit Changes** (user will do this part):
    ```bash
    git add supabase/functions/mcp-server/index.ts
    git commit -m "Add [toolName] MCP tool for [purpose]
@@ -378,12 +388,15 @@ User: "great work. And good call not testing the additive tools"
 
 ## Best Practices
 
+**For AI Assistants implementing tools:**
+
 1. **Start Simple**: Implement basic functionality first, add features incrementally
-2. **Follow Patterns**: Use existing tools as templates for consistency
-3. **Test Thoroughly**: Both positive and negative test cases
-4. **Document Changes**: Clear commit messages and inline comments
-5. **Safety First**: Avoid modifying data during regression testing
+2. **Follow Patterns**: Always use `browseTeams` as your template - copy its structure
+3. **Test Immediately**: Call your tool from chat as soon as you implement it
+4. **Be Proactive**: Don't wait for user instructions - implement, test, report results
+5. **Safety First**: Only test read-only tools during regression (browse*, get*)
 6. **Performance**: Use appropriate limits and pagination for large datasets
+7. **Error Context**: If something fails, check server logs and explain what you see
 
 ## Future Considerations
 

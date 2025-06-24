@@ -391,8 +391,9 @@ serve(async (req) => {
   }
 
   // --- MCP Tool Discovery ---
-  // On GET /, return the list of available tools
+  // On GET /, return the list of available tools (no auth required)
   if (req.method === 'GET' && url.pathname === '/') {
+    console.log('[DEBUG] GET request for tools list, returning', AVAILABLE_TOOLS.length, 'tools');
     const responseBody = {
       tools: AVAILABLE_TOOLS,
     };
@@ -466,8 +467,9 @@ serve(async (req) => {
         });
       }
       
-      // Handle tools/list request
+      // Handle tools/list request (no auth required)
       if (requestBody.method === 'tools/list') {
+        console.log('[DEBUG] Returning tools list:', AVAILABLE_TOOLS.length, 'tools');
         const response = {
           jsonrpc: '2.0',
           id: requestBody.id,

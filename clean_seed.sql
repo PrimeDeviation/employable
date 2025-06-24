@@ -1,0 +1,11 @@
+INSERT INTO "public"."offers" ("id", "title", "description", "offer_type", "created_by", "budget_min", "budget_max", "budget_type", "status", "visibility", "location_preference", "timezone_preference", "tags", "expires_at", "created_at", "updated_at") VALUES
+INSERT INTO "public"."bids" ("id", "offer_id", "bidder_id", "proposal", "proposed_budget", "proposed_timeline", "why_choose_us", "approach", "questions", "status", "created_at", "updated_at") VALUES
+INSERT INTO "public"."bid_responses" ("id", "bid_id", "responder_id", "new_status", "response_comment", "created_at") VALUES
+INSERT INTO "public"."client_offers" ("offer_id", "objectives", "success_criteria", "deliverables", "timeline", "start_date", "deadline", "estimated_duration", "required_skills", "preferred_skills", "project_type", "technical_requirements", "team_size_preference", "experience_level", "communication_style", "project_management_style") VALUES
+INSERT INTO "public"."profiles" ("id", "updated_at", "username", "full_name", "avatar_url", "website", "company_name", "hourly_rate", "availability", "github_url", "linkedin_url", "bio", "role", "created_at", "theme", "mcp_enabled", "skills", "stripe_customer_id") VALUES
+INSERT INTO "public"."resources" ("id", "name", "role", "skills", "location", "profile_id", "work_history", "projects", "portfolio_urls") VALUES
+INSERT INTO "public"."mcp_tokens" ("id", "user_id", "name", "token_hash", "created_at", "expires_at", "last_used_at", "is_active") VALUES
+INSERT INTO "public"."teams" ("id", "owner_id", "name", "created_at", "description", "skills", "location", "remote_work", "team_size", "hourly_rate_min", "hourly_rate_max", "availability", "website", "public_profile", "updated_at") VALUES
+INSERT INTO "public"."team_invitations" ("id", "team_id", "inviter_id", "invitee_email", "status", "created_at", "expires_at", "accepted_at", "declined_at") VALUES
+INSERT INTO "public"."team_members" ("team_id", "user_id") VALUES
+INSERT INTO "public"."team_offers" ("offer_id", "services_offered", "service_categories", "team_size", "team_composition", "methodology", "experience_level", "years_experience", "portfolio_examples", "client_testimonials", "specializations", "certifications", "technologies_expertise", "current_availability", "capacity", "onboarding_process", "communication_approach", "quality_assurance") VALUES
