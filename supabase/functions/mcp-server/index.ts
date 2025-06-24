@@ -318,7 +318,18 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Try JWT validation first for tokens that look like JWTs (have dots)
+    // Try Supabase session token validation first
+    try {
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+      if (!userError && user) {
+        console.log('Supabase session token validated for user:', user.id);
+        return { userId: user.id, scopes: ['*'] };
+      }
+    } catch (error) {
+      console.log('Supabase session validation failed:', error);
+    }
+
+    // Try JWT validation for custom MCP tokens (have dots)
     if (token.includes('.')) {
       try {
         // Simple JWT payload extraction (not validating signature for now)
@@ -335,7 +346,7 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
       }
     }
 
-    // Fall back to database token lookup
+    // Fall back to database token lookup for hash-based tokens
     const { data: tokenData, error } = await supabaseAdmin
       .from('mcp_tokens')
       .select('user_id, expires_at')

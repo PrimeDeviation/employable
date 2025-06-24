@@ -4,7 +4,7 @@
     "lib": ["deno.ns", "dom"]
   },
   "functions": {
-    "verify_jwt": false
+    "verifyJWT": false
   },
   "lint": {
     "files": {
