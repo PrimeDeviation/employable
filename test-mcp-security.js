@@ -3,7 +3,7 @@
 const http = require('http');
 
 // Test configuration
-const MCP_SERVER_URL = 'http://localhost:54321/functions/v1/mcp-server';
+const MCP_SERVER_URL = 'https://kvtqkvifglyytdsvsyzo.supabase.co/functions/v1/mcp-server';
 const TEST_USERNAME = 'your-username'; // Replace with actual username
 const TEST_TOKEN = 'your-mcp-token'; // Replace with actual token
 

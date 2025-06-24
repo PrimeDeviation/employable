@@ -2,9 +2,23 @@
   "mcpServers": {
     "employable-agents-local": {
       "type": "streamable-http",
-      "url": "http://127.0.0.1:54321/functions/v1/mcp-server",
+      "url": "https://kvtqkvifglyytdsvsyzo.supabase.co/functions/v1/mcp-server",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiIDogImVtcGxveWFibGUtbWNwIiwgInN1YiIgOiAiOTYxMGE4MTItYzMyZS00ZWUzLTkxMGMtMGVjODI1NDM2MGM5IiwgImF1ZCIgOiAibWNwLWNsaWVudCIsICJleHAiIDogMTc4MTk3MjY2NCwgImlhdCIgOiAxNzUwNDM2NjY0LCAidG9rZW5fdHlwZSIgOiAibWNwIiwgInVzZXJfaWQiIDogIjk2MTBhODEyLWMzMmUtNGVlMy05MTBjLTBlYzgyNTQzNjBjOSIsICJ0b2tlbl9pZCIgOiAiMzJiMmMwZjMtMTc0MS00MGRiLTljNDQtNzQ1NzVhY2QyMGUzIn0.L_D46YFkBoJd3X82P28jkavl0ZwsOD6FBaBFELkFPtg"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2dHFrdmlmZ2x5eXRkc3ZzeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTI4MDAsImV4cCI6MjA2NTQyODgwMH0.CUS5rQauFXHXTXBJGMxGWES9d8G7LmbaX0vlWMs2DOw"
+      }
+    },
+    "employable-agents-production": {
+      "type": "streamable-http",
+      "url": "https://kvtqkvifglyytdsvsyzo.supabase.co/functions/v1/mcp-server",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2dHFrdmlmZ2x5eXRkc3ZzeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTI4MDAsImV4cCI6MjA2NTQyODgwMH0.CUS5rQauFXHXTXBJGMxGWES9d8G7LmbaX0vlWMs2DOw"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=kvtqkvifglyytdsvsyzo"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_013785bf0d913c6ae5c143f707cbaa67c3b62652"
       }
     }
   }
