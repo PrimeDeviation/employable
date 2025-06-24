@@ -20,13 +20,14 @@ interface NewTokenResponse {
 }
 
 const MCPTokenManager: React.FC = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [tokens, setTokens] = useState<MCPToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [newToken, setNewToken] = useState<NewTokenResponse | null>(null);
   const [showNewToken, setShowNewToken] = useState(false);
+  const [expirationOption, setExpirationOption] = useState<'1year' | '5years' | 'never'>('1year');
 
   useEffect(() => {
     if (user) {
@@ -50,14 +51,25 @@ const MCPTokenManager: React.FC = () => {
     }
   };
 
+  const getExpirationDays = (option: string): number | null => {
+    switch (option) {
+      case '1year': return 365;
+      case '5years': return 365 * 5;
+      case 'never': return null; // No expiration
+      default: return 365;
+    }
+  };
+
   const createToken = async () => {
     if (!newTokenName.trim()) return;
 
     try {
       setCreating(true);
+      const expirationDays = getExpirationDays(expirationOption);
+      
       const { data, error } = await supabase.rpc('generate_mcp_jwt_token', {
         p_name: newTokenName.trim(),
-        p_expires_days: 365
+        p_expires_days: expirationDays
       });
 
       if (error) throw error;
@@ -127,19 +139,39 @@ const MCPTokenManager: React.FC = () => {
     });
   };
 
+  const getProviderInfo = () => {
+    const provider = user?.app_metadata?.provider;
+    const isOAuth = provider && provider !== 'email';
+    return {
+      isOAuth,
+      provider: provider || 'email',
+      providerName: provider === 'github' ? 'GitHub' : provider === 'google' ? 'Google' : 'Email'
+    };
+  };
+
   if (loading) {
     return <div className="text-center py-4">Loading MCP tokens...</div>;
   }
+
+  const { isOAuth, providerName } = getProviderInfo();
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          MCP API Tokens
+          Long-Lasting MCP API Tokens
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Generate API tokens to authenticate MCP clients and AI agents with your account.
-        </p>
+        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+          <p>
+            Generate persistent API tokens for MCP clients (Cursor, Claude Desktop, etc.) that won't expire during normal usage.
+          </p>
+          {isOAuth && (
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <span>🔗</span>
+              <span>Connected via {providerName} OAuth</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* New Token Dialog */}
@@ -153,10 +185,10 @@ const MCPTokenManager: React.FC = () => {
             </div>
             <div className="ml-3">
               <h3 className="text-lg font-medium text-green-900 dark:text-green-100">
-            Token Created Successfully!
+                Long-Lasting Token Created!
               </h3>
               <p className="text-sm text-green-700 dark:text-green-300">
-                Store this token securely - you won't be able to see it again.
+                This token {expirationOption === 'never' ? 'never expires' : `expires in ${expirationOption.replace('years', ' years').replace('year', ' year')}`}. Store it securely - you won't see it again.
               </p>
             </div>
           </div>
@@ -174,50 +206,62 @@ const MCPTokenManager: React.FC = () => {
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
               <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
                 <span className="mr-2">🔧</span>
-                Setup Instructions for Cursor
+                Setup Instructions for MCP Clients
               </h4>
               
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                    Option 1 (Recommended): Environment Variable
+                    For Cursor IDE:
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 mb-2">
-                    Set this in your terminal before starting Cursor:
+                    Add to your <code>.cursor/mcp.json</code>:
                   </p>
                   <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
-                    export MCP_TOKEN="{newToken.token}"
+                    {`{
+  "mcpServers": {
+    "employable-agents": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase"],
+      "env": {
+        "SUPABASE_URL": "https://kvtqkvifglyytdsvsyzo.supabase.co",
+        "SUPABASE_ANON_KEY": "${newToken.token}"
+      }
+    }
+  }
+}`}
                   </code>
                 </div>
 
                 <div>
                   <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                    Option 2: Secure Token File
+                    For Claude Desktop:
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 mb-2">
-                    Create a secure file in your home directory:
+                    Add to your Claude Desktop config:
                   </p>
                   <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
-                    echo "{newToken.token}" {"> ~/.employable-mcp-token"}<br/>
-                    chmod 600 ~/.employable-mcp-token
-                  </code>
-                </div>
-
-                <div>
-                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                    MCP Server URL:
-                  </p>
-                  <code className="block p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-900 dark:text-blue-100 font-mono text-xs overflow-x-auto">
-                    http://127.0.0.1:54321/functions/v1/mcp-server
+                    {`{
+  "mcpServers": {
+    "employable": {
+      "command": "node",
+      "args": ["path/to/mcp-client.js"],
+      "env": {
+        "MCP_TOKEN": "${newToken.token}",
+        "MCP_SERVER_URL": "https://kvtqkvifglyytdsvsyzo.supabase.co/functions/v1/mcp-server"
+      }
+    }
+  }
+}`}
                   </code>
                 </div>
 
                 <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                   <p className="text-yellow-800 dark:text-yellow-200 text-xs flex items-start">
-                    <span className="mr-2 mt-0.5">⚠️</span>
+                    <span className="mr-2 mt-0.5">🔒</span>
                     <span>
-                      <strong>Security Notice:</strong> Keep this token secure. Don't share it or commit it to version control. 
-                      The token authenticates as your user account and provides access to your profile data.
+                      <strong>Security:</strong> This token provides full access to your account. Keep it secure, don't share it, and don't commit it to version control.
+                      {expirationOption === 'never' && ' Since this token never expires, treat it like a password.'}
                     </span>
                   </p>
                 </div>
@@ -227,7 +271,7 @@ const MCPTokenManager: React.FC = () => {
 
           <div className="mt-6 flex justify-end">
             <Button onClick={handleCloseModal} variant="secondary">
-              I've Saved My Token
+              I've Saved My Token Securely
             </Button>
           </div>
         </div>
@@ -236,21 +280,49 @@ const MCPTokenManager: React.FC = () => {
       {/* Create New Token */}
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Create New Token
+          Create New Long-Lasting Token
         </h4>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Token name (e.g., 'My AI Agent')"
-            value={newTokenName}
-            onChange={(e) => setNewTokenName(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          />
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Token Name
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., 'Cursor IDE', 'My AI Assistant', 'Production Bot'"
+              value={newTokenName}
+              onChange={(e) => setNewTokenName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Token Lifetime
+            </label>
+            <select
+              value={expirationOption}
+              onChange={(e) => setExpirationOption(e.target.value as '1year' | '5years' | 'never')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <option value="1year">1 Year (Recommended)</option>
+              <option value="5years">5 Years (Long-term projects)</option>
+              <option value="never">Never Expires (Use with caution)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {expirationOption === '1year' && 'Good balance of security and convenience'}
+              {expirationOption === '5years' && 'For long-term integrations and automation'}
+              {expirationOption === 'never' && 'Maximum convenience but requires careful security management'}
+            </p>
+          </div>
+
           <Button
             onClick={createToken}
             disabled={creating || !newTokenName.trim()}
+            className="w-full"
           >
-            {creating ? 'Creating...' : 'Create Token'}
+            {creating ? 'Creating Token...' : 'Create Long-Lasting Token'}
           </Button>
         </div>
       </div>
@@ -258,57 +330,63 @@ const MCPTokenManager: React.FC = () => {
       {/* Existing Tokens */}
       <div>
         <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Existing Tokens
+          Your Active Tokens
         </h4>
         {tokens.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            No MCP tokens created yet.
-          </p>
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <p>No MCP tokens created yet.</p>
+            <p className="text-sm mt-1">Create your first token above to get started with MCP clients.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {tokens.map((token) => (
               <div
                 key={token.id}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800"
+                className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
                     <h5 className="font-medium text-gray-900 dark:text-gray-100">
                       {token.name}
                     </h5>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 space-y-1">
-                      <div>Created: {formatDate(token.created_at)}</div>
-                      <div>Expires: {formatDate(token.expires_at)}</div>
-                      {token.last_used_at && (
-                        <div>Last used: {formatDate(token.last_used_at)}</div>
-                      )}
-                      <div>
-                        Status: 
-                        <span className={`ml-1 ${token.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {token.is_active ? 'Active' : 'Revoked'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    {token.is_active && (
-                      <Button
-                        onClick={() => revokeToken(token.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Revoke
-                      </Button>
+                    {!token.is_active && (
+                      <span className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">
+                        Revoked
+                      </span>
                     )}
-                    <Button
-                      onClick={() => deleteToken(token.id)}
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-                    >
-                      Delete
-                    </Button>
+                    {!token.expires_at && (
+                      <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                        Never Expires
+                      </span>
+                    )}
                   </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p>Created: {formatDate(token.created_at)}</p>
+                    {token.expires_at && (
+                      <p>Expires: {formatDate(token.expires_at)}</p>
+                    )}
+                    {token.last_used_at && (
+                      <p>Last used: {formatDate(token.last_used_at)}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {token.is_active && (
+                    <Button
+                      onClick={() => revokeToken(token.id)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Revoke
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => deleteToken(token.id)}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Delete
+                  </Button>
                 </div>
               </div>
             ))}
