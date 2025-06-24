@@ -11,7 +11,7 @@ const os = require('os');
 
 const ENVIRONMENTS = {
   local: {
-    url: 'http://127.0.0.1:54321/functions/v1/mcp-server',
+          url: 'https://kvtqkvifglyytdsvsyzo.supabase.co/functions/v1/mcp-server',
     name: 'employable-agents-local'
   },
   production: {
