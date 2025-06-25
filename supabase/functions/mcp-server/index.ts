@@ -242,6 +242,20 @@ const AVAILABLE_TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'getTeamDetail',
+    description: 'Get detailed information about a specific team including members, skills, and contact information',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team_id: {
+          type: 'number',
+          description: 'The ID of the team to get details for (obtained from browseTeams)'
+        }
+      },
+      required: ['team_id']
+    }
   }
 ];
 
@@ -1570,6 +1584,185 @@ Resource ID: ${resourceData.id}
         console.error('Error browsing teams:', error);
         
         const errorMessage = 'An error occurred while browsing teams.';
+        
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'getTeamDetail') {
+      try {
+        const { team_id } = parameters || {};
+
+        if (!team_id) {
+          throw new Error('team_id is required');
+        }
+
+        // Use local Supabase instance for development
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        
+        // Get detailed team information
+        const { data: team, error } = await supabase
+          .from('teams')
+          .select(`
+            id,
+            name,
+            description,
+            skills,
+            location,
+            remote_work,
+            team_size,
+            hourly_rate_min,
+            hourly_rate_max,
+            availability,
+            website,
+            created_at,
+            updated_at,
+            owner_id,
+            team_members (
+              user_id,
+              profiles (
+                full_name,
+                username,
+                bio,
+                role,
+                skills,
+                github_url,
+                linkedin_url
+              )
+            )
+          `)
+          .eq('id', team_id)
+          .eq('public_profile', true)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            throw new Error('Team not found or not publicly accessible');
+          }
+          throw error;
+        }
+
+        // Format detailed team information
+        const memberCount = team.team_members?.length || 0;
+        const rateInfo = team.hourly_rate_min && team.hourly_rate_max 
+          ? `$${team.hourly_rate_min} - $${team.hourly_rate_max}/hr`
+          : team.hourly_rate_min 
+          ? `From $${team.hourly_rate_min}/hr`
+          : team.hourly_rate_max
+          ? `Up to $${team.hourly_rate_max}/hr`
+          : 'Rate negotiable';
+
+        let teamDetail = `🏢 TEAM DETAILS
+
+📋 ${team.name}
+${team.description || 'No description provided'}
+
+👥 TEAM COMPOSITION
+Members: ${memberCount}`;
+        
+        if (team.team_size) {
+          teamDetail += ` (target size: ${team.team_size})`;
+        }
+        
+        teamDetail += `
+Rate: ${rateInfo}
+Location: ${team.location || 'Not specified'}`;
+        
+        if (team.remote_work) {
+          teamDetail += ` (Remote work available)`;
+        }
+        
+        if (team.availability) {
+          teamDetail += `
+Availability: ${team.availability}`;
+        }
+
+        // Skills section
+        if (team.skills && team.skills.length > 0) {
+          teamDetail += `\n\n🛠️ TEAM SKILLS
+${team.skills.join(', ')}`;
+        }
+
+        // Team owner section (simplified for now)
+        teamDetail += `\n\n👤 TEAM OWNER
+Owner ID: ${team.owner_id}`;
+
+        // Team members section
+        if (team.team_members && team.team_members.length > 0) {
+          teamDetail += `\n\n👥 TEAM MEMBERS (${team.team_members.length})`;
+          team.team_members.forEach((member: any, index: number) => {
+            const profile = member.profiles;
+            if (profile) {
+              teamDetail += `\n\n${index + 1}. ${profile.full_name || profile.username || 'Unknown Member'}`;
+              if (profile.role) {
+                teamDetail += ` - ${profile.role}`;
+              }
+              if (profile.bio) {
+                const shortBio = profile.bio.length > 80 ? `${profile.bio.substring(0, 80)}...` : profile.bio;
+                teamDetail += `\n   ${shortBio}`;
+              }
+              if (profile.skills && profile.skills.length > 0) {
+                const memberSkills = profile.skills.slice(0, 3).join(', ');
+                const moreSkills = profile.skills.length > 3 ? ` (+${profile.skills.length - 3} more)` : '';
+                teamDetail += `\n   Skills: ${memberSkills}${moreSkills}`;
+              }
+              if (profile.github_url || profile.linkedin_url) {
+                teamDetail += `\n   Links:`;
+                if (profile.github_url) teamDetail += ` GitHub: ${profile.github_url}`;
+                if (profile.linkedin_url) teamDetail += ` LinkedIn: ${profile.linkedin_url}`;
+              }
+            }
+          });
+        }
+
+        // Contact information
+        if (team.website) {
+          teamDetail += `\n\n🌐 CONTACT
+Website: ${team.website}`;
+        }
+
+        teamDetail += `\n\n📅 TEAM INFO
+Created: ${new Date(team.created_at).toLocaleDateString()}
+Last Updated: ${new Date(team.updated_at).toLocaleDateString()}
+Team ID: ${team.id}
+
+💡 To connect with this team, create an offer or browse their related offers in the marketplace.`;
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: teamDetail }]
+              }
+            }
+          : { content: teamDetail };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error getting team detail:', error);
+        
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred while getting team details.';
         
         const responseData = isJsonRpc 
           ? {
