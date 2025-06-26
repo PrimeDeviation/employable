@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateOffer } from '../hooks/useCreateOffer';
+import { useUserTeams } from '../hooks/useUserTeams';
 
 type OfferType = 'client_offer' | 'team_offer';
 
@@ -16,11 +17,13 @@ interface OfferFormData {
   budget_type: 'fixed' | 'hourly' | 'milestone' | 'negotiable';
   team_size?: number;
   experience_level?: 'junior' | 'mid' | 'senior' | 'expert';
+  team_id?: number;
 }
 
 export function OfferCreationPage() {
   const navigate = useNavigate();
   const { createOffer, isLoading } = useCreateOffer();
+  const { teams, isLoading: teamsLoading } = useUserTeams();
   
   const [formData, setFormData] = useState<OfferFormData>({
     title: '',
@@ -35,10 +38,16 @@ export function OfferCreationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.team_id) {
+      alert('Please select a team for this offer.');
+      return;
+    }
+    
     try {
       // Filter out empty arrays and create structured description
       const cleanedData = {
         ...formData,
+        team_id: formData.team_id,
         objectives: formData.objectives.filter(obj => obj.trim()),
         required_skills: formData.required_skills.filter(skill => skill.trim()),
         services_offered: formData.services_offered.filter(service => service.trim()),
@@ -110,6 +119,33 @@ export function OfferCreationPage() {
                 Team Offer (Offering Services)
               </label>
             </div>
+          </div>
+
+          {/* Team Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Team *
+            </label>
+            <select
+              value={formData.team_id || ''}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                team_id: e.target.value ? Number(e.target.value) : undefined 
+              }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+              disabled={teamsLoading}
+              required
+            >
+              <option value="">Select a team...</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {teamsLoading ? 'Loading teams...' : teams.length === 0 ? 'No teams available. Create a team first.' : 'Select which team this offer is for.'}
+            </p>
           </div>
 
           {/* Title */}

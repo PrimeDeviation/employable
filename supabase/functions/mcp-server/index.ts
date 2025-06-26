@@ -107,6 +107,10 @@ const AVAILABLE_TOOLS = [
           enum: ['client_offer', 'team_offer'],
           description: 'Type of offer: client_offer (looking for team) or team_offer (offering services)'
         },
+        team_id: {
+          type: 'number',
+          description: 'ID of the team this offer is for (required - every offer must be associated with a team)'
+        },
         objectives: {
           type: 'array',
           items: { type: 'string' },
@@ -145,7 +149,21 @@ const AVAILABLE_TOOLS = [
           description: 'Experience level (for team offers, default: mid)'
         }
       },
-      required: ['title', 'description', 'offer_type']
+      required: ['title', 'description', 'offer_type', 'team_id']
+    }
+  },
+  {
+    name: 'getMyTeams',
+    description: 'Get teams that the authenticated user belongs to (for offer creation)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        random_string: {
+          type: 'string',
+          description: 'Dummy parameter for no-parameter tools'
+        }
+      },
+      required: ['random_string']
     }
   },
   {
@@ -201,6 +219,45 @@ const AVAILABLE_TOOLS = [
         }
       },
       required: ['resource_id']
+    }
+  },
+  {
+    name: 'createBid',
+    description: 'Create a new bid on an offer (requires authentication)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        offer_id: {
+          type: 'number',
+          description: 'The ID of the offer to bid on'
+        },
+        proposal: {
+          type: 'string',
+          description: 'Your bid proposal describing how you will complete the project'
+        },
+        proposed_budget: {
+          type: 'number',
+          description: 'Your proposed budget for the project (optional)'
+        },
+        proposed_timeline: {
+          type: 'string',
+          description: 'Your proposed timeline for completion (optional)'
+        },
+        why_choose_us: {
+          type: 'string', 
+          description: 'Why the client should choose your team (optional)'
+        },
+        approach: {
+          type: 'string',
+          description: 'Your technical/methodological approach (optional)'
+        },
+        questions: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Any questions you have about the project (optional)'
+        }
+      },
+      required: ['offer_id', 'proposal']
     }
   },
   {
@@ -1017,12 +1074,12 @@ ${offerData.description}
       }
 
       try {
-        const { title, description, offer_type, objectives, required_skills, services_offered, 
+        const { title, description, offer_type, team_id, objectives, required_skills, services_offered, 
                 budget_min, budget_max, budget_type, team_size, experience_level } = parameters || {};
 
         // Validate required fields
-        if (!title || !description || !offer_type) {
-          return new Response(JSON.stringify({ error: 'Missing required fields: title, description, and offer_type are required.' }), { 
+        if (!title || !description || !offer_type || !team_id) {
+          return new Response(JSON.stringify({ error: 'Missing required fields: title, description, offer_type, and team_id are required.' }), { 
             status: 400, 
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
           });
@@ -1066,6 +1123,21 @@ ${offerData.description}
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
 
+        // Validate team membership (team_id is now required)
+        const { data: teamMember, error: teamError } = await supabaseAdmin
+          .from('team_members')
+          .select('team_id')
+          .eq('team_id', team_id)
+          .eq('user_id', authResult.userId)
+          .single();
+
+        if (teamError || !teamMember) {
+          return new Response(JSON.stringify({ error: 'You are not a member of the specified team.' }), { 
+            status: 403, 
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+          });
+        }
+
         let offerId: number;
 
         if (offer_type === 'client_offer') {
@@ -1077,6 +1149,7 @@ ${offerData.description}
               description,
               offer_type: 'client_offer',
               created_by: authResult.userId,
+              team_id: team_id || null,
               budget_min: budget_min || null,
               budget_max: budget_max || null,
               budget_type: budget_type || 'negotiable',
@@ -1108,6 +1181,7 @@ ${offerData.description}
               description,
               offer_type: 'team_offer',
               created_by: authResult.userId,
+              team_id: team_id || null,
               status: 'active',
               visibility: 'public'
             })
@@ -1162,6 +1236,95 @@ Your offer is now live in the marketplace and can be discovered by ${offer_type 
         const errorMessage = 'An error occurred while creating the offer. Please try again.';
         
         // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'getMyTeams') {
+      try {
+        // This operation requires authentication
+        const authResult = await authenticateRequest(req);
+        if (!authResult) {
+          throw new Error('Authentication required to get your teams');
+        }
+
+        // Use local Supabase instance for development (same pattern as getTeamDetail)
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+        // Get user's teams by joining with team_members (using service role for this specific query)
+        const supabaseAdmin = createClient(
+          supabaseUrl,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+        );
+
+        const { data: userTeams, error } = await supabaseAdmin
+          .from('team_members')
+          .select(`
+            team_id,
+            teams:team_id (
+              id,
+              name,
+              owner_id
+            )
+          `)
+          .eq('user_id', authResult.userId);
+
+        if (error) {
+          throw error;
+        }
+
+        let teamsInfo = '';
+        if (!userTeams || userTeams.length === 0) {
+          teamsInfo = '📋 MY TEAMS\n\nYou are not a member of any teams yet.\n\nTo create team-based offers, you need to either:\n1. Create a new team\n2. Join an existing team\n\nFor now, you can only create individual offers.';
+        } else {
+          teamsInfo = `📋 MY TEAMS (${userTeams.length} total)\n\n`;
+          userTeams.forEach((membership: any, index: number) => {
+            const team = membership.teams;
+            teamsInfo += `${index + 1}. ${team.name}`;
+            if (team.owner_id === authResult.userId) {
+              teamsInfo += ' (Owner)';
+            }
+            teamsInfo += `\n   Team ID: ${team.id}\n`;
+            if (index < userTeams.length - 1) teamsInfo += '\n';
+          });
+          teamsInfo += '\n\n💡 When creating offers, you can specify a team_id to create the offer on behalf of that team.';
+        }
+
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: teamsInfo }]
+              }
+            }
+          : { content: teamsInfo };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error getting user teams:', error);
+        
+        const errorMessage = 'An error occurred while retrieving your teams. Please try again.';
+        
         const responseData = isJsonRpc 
           ? {
               jsonrpc: '2.0',
@@ -1763,6 +1926,140 @@ Team ID: ${team.id}
         console.error('Error getting team detail:', error);
         
         const errorMessage = error instanceof Error ? error.message : 'An error occurred while getting team details.';
+        
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              error: {
+                code: -32603,
+                message: errorMessage
+              }
+            }
+          : { error: errorMessage };
+
+        return new Response(JSON.stringify(responseData), { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+      }
+    }
+
+    if (serviceName === 'createBid') {
+      try {
+        const { offer_id, proposal, proposed_budget, proposed_timeline, why_choose_us, approach, questions } = parameters || {};
+
+        if (!offer_id || !proposal) {
+          throw new Error('offer_id and proposal are required');
+        }
+
+        // This operation requires authentication
+        const authResult = await authenticateRequest(req);
+        if (!authResult) {
+          throw new Error('Authentication required to create bids');
+        }
+
+        // Use service role key for authenticated operations that bypass RLS
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Verify the offer exists and is active
+        const { data: offer, error: offerError } = await supabase
+          .from('offers')
+          .select('id, title, status, created_by')
+          .eq('id', offer_id)
+          .single();
+
+        if (offerError || !offer) {
+          throw new Error('Offer not found or not accessible');
+        }
+
+        if (offer.status !== 'active') {
+          throw new Error(`Cannot bid on ${offer.status} offers`);
+        }
+
+        if (offer.created_by === authResult.userId) {
+          throw new Error('Cannot bid on your own offers');
+        }
+
+        // Check if user already has an active bid on this offer (exclude rejected bids)
+        const { data: existingBid } = await supabase
+          .from('bids')
+          .select('id, status')
+          .eq('offer_id', offer_id)
+          .eq('bidder_id', authResult.userId)
+          .neq('status', 'rejected')
+          .single();
+
+        if (existingBid) {
+          throw new Error('You already have a bid on this offer. Use updateBid to modify it.');
+        }
+
+        // Create the bid
+        const bidData: any = {
+          offer_id,
+          bidder_id: authResult.userId,
+          proposal,
+          status: 'submitted'
+        };
+
+        // Add optional fields if provided
+        if (proposed_budget !== undefined) bidData.proposed_budget = proposed_budget;
+        if (proposed_timeline) bidData.proposed_timeline = proposed_timeline;
+        if (why_choose_us) bidData.why_choose_us = why_choose_us;
+        if (approach) bidData.approach = approach;
+        if (questions && questions.length > 0) bidData.questions = questions;
+
+        const { data: newBid, error: bidError } = await supabase
+          .from('bids')
+          .insert(bidData)
+          .select()
+          .single();
+
+        if (bidError) {
+          throw bidError;
+        }
+
+        const responseText = `✅ BID CREATED SUCCESSFULLY!
+
+🎯 BID DETAILS
+Offer: ${offer.title}
+Bid ID: ${newBid.id}
+Status: ${newBid.status}
+${proposed_budget ? `Budget: $${proposed_budget}` : ''}
+${proposed_timeline ? `Timeline: ${proposed_timeline}` : ''}
+
+📝 PROPOSAL
+${proposal}
+
+${why_choose_us ? `\n💡 WHY CHOOSE US\n${why_choose_us}` : ''}
+${approach ? `\n🔧 APPROACH\n${approach}` : ''}
+${questions && questions.length > 0 ? `\n❓ QUESTIONS\n${questions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')}` : ''}
+
+📅 Created: ${new Date(newBid.created_at).toLocaleString()}
+
+💡 Your bid is now submitted and visible to the offer creator. You can use updateBid to modify it before it's accepted.`;
+
+        // Format response based on request type
+        const responseData = isJsonRpc 
+          ? {
+              jsonrpc: '2.0',
+              id: jsonRpcId,
+              result: {
+                content: [{ type: 'text', text: responseText }]
+              }
+            }
+          : { content: responseText };
+
+        return new Response(JSON.stringify(responseData), { 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
+        });
+
+      } catch (error) {
+        console.error('Error creating bid:', error);
+        
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred while creating the bid.';
         
         const responseData = isJsonRpc 
           ? {

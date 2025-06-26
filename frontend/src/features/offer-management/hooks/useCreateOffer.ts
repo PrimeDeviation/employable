@@ -13,6 +13,7 @@ interface CreateOfferData {
   budget_type?: 'fixed' | 'hourly' | 'milestone' | 'negotiable';
   team_size?: number;
   experience_level?: 'junior' | 'mid' | 'senior' | 'expert';
+  team_id: number;
 }
 
 export function useCreateOffer() {
@@ -63,6 +64,7 @@ Experience Level: ${data.experience_level || 'Mid-level'}`;
           description: structuredDescription,
           offer_type: data.offer_type,
           created_by: user.id,
+          team_id: data.team_id,
           budget_min: data.budget_min || null,
           budget_max: data.budget_max || null,
           budget_type: data.budget_type || 'negotiable'
