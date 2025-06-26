@@ -224,7 +224,7 @@ const MCPTokenManager: React.FC = () => {
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase"],
       "env": {
-        "SUPABASE_URL": "https://kvtqkvifglyytdsvsyzo.supabase.co",
+        "SUPABASE_URL": "${process.env.REACT_APP_SUPABASE_URL}",
         "SUPABASE_ANON_KEY": "${newToken.token}"
       }
     }

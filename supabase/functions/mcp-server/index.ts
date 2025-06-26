@@ -1262,15 +1262,15 @@ Your offer is now live in the marketplace and can be discovered by ${offer_type 
           throw new Error('Authentication required to get your teams');
         }
 
-        // Use local Supabase instance for development (same pattern as getTeamDetail)
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+        // Use environment variables for Supabase configuration
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         // Get user's teams by joining with team_members (using service role for this specific query)
         const supabaseAdmin = createClient(
           supabaseUrl,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
         );
 
         const { data: userTeams, error } = await supabaseAdmin
@@ -1774,9 +1774,9 @@ Resource ID: ${resourceData.id}
           throw new Error('team_id is required');
         }
 
-        // Use local Supabase instance for development
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+        // Use environment variables for Supabase configuration
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
         
         // Get detailed team information
@@ -1960,8 +1960,8 @@ Team ID: ${team.id}
         }
 
         // Use service role key for authenticated operations that bypass RLS
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+          const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Verify the offer exists and is active
