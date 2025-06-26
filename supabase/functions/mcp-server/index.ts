@@ -373,6 +373,25 @@ function handleWebSocket(socket: WebSocket) {
 interface AuthResult {
   userId: string;
   scopes: string[];
+  sessionToken?: string; // Store the original session token for user-authenticated queries
+}
+
+// Helper function to create a user-authenticated Supabase client
+async function createUserAuthenticatedClient(sessionToken?: string) {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!
+  );
+  
+  if (sessionToken) {
+    // Set the session for user-authenticated operations
+    await supabase.auth.setSession({
+      access_token: sessionToken,
+      refresh_token: ''
+    });
+  }
+  
+  return supabase;
 }
 
 async function authenticateRequest(req: Request): Promise<AuthResult | null> {
@@ -394,7 +413,7 @@ async function authenticateRequest(req: Request): Promise<AuthResult | null> {
       const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
       if (!userError && user) {
         console.log('Supabase session token validated for user:', user.id);
-        return { userId: user.id, scopes: ['*'] };
+        return { userId: user.id, scopes: ['*'], sessionToken: token };
       }
     } catch (error) {
       console.log('Supabase session validation failed:', error);
@@ -1650,7 +1669,11 @@ Resource ID: ${resourceData.id}
               user_id,
               profiles (
                 full_name,
-                username
+                username,
+                bio,
+                role,
+                github_url,
+                linkedin_url
               )
             )
           `)
@@ -1804,14 +1827,12 @@ Resource ID: ${resourceData.id}
                 username,
                 bio,
                 role,
-                skills,
                 github_url,
                 linkedin_url
               )
             )
           `)
           .eq('id', team_id)
-          .eq('public_profile', true)
           .single();
 
         if (error) {
@@ -1879,11 +1900,6 @@ Owner ID: ${team.owner_id}`;
               if (profile.bio) {
                 const shortBio = profile.bio.length > 80 ? `${profile.bio.substring(0, 80)}...` : profile.bio;
                 teamDetail += `\n   ${shortBio}`;
-              }
-              if (profile.skills && profile.skills.length > 0) {
-                const memberSkills = profile.skills.slice(0, 3).join(', ');
-                const moreSkills = profile.skills.length > 3 ? ` (+${profile.skills.length - 3} more)` : '';
-                teamDetail += `\n   Skills: ${memberSkills}${moreSkills}`;
               }
               if (profile.github_url || profile.linkedin_url) {
                 teamDetail += `\n   Links:`;
